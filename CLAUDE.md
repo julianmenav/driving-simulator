@@ -87,6 +87,13 @@ Orden de implementación de fase 1 (cada paso da resultado visible):
   `export PATH="$HOME/.local/share/nvm/v24.15.0/bin:$PATH"` antes de npm/node.
 - `npm run dev` · `npm test` · `npm run build` (typecheck + bundle).
 - Verificación visual headless: no hay chromium-cli; usar `playwright-core` (instalado ad hoc en /tmp) con `executablePath: /usr/bin/google-chrome-stable` y flags `--no-sandbox --enable-unsafe-swiftshader --use-angle=swiftshader`; esperar ~7 s a que cargue el WASM de Rapier antes de capturar.
+
+## Deploy (GitHub Pages)
+
+- Misma convención que dnd-calculator: paquete `gh-pages` (no GitHub Actions). `base: '/driving-simulator/'` en vite.config.ts.
+- `npm run deploy` = `npm run build && gh-pages -d dist`: publica `dist/` en la rama `gh-pages`.
+- Remoto SSH `git@github.com:julianmenav/driving-simulator.git`. Pages sirve desde la rama `gh-pages`.
+- URL: https://julianmenav.github.io/driving-simulator/
 - TypeScript 6: `baseUrl` está deprecado — los `paths` del tsconfig usan rutas relativas.
 
 ## Referencias
