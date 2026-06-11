@@ -56,7 +56,7 @@ export const DEFAULT_VEHICLE_SPEC: VehicleSpec = {
   suspensionRelaxation: 2.3,
   maxEngineForce: 2400,
   maxPowerWatts: 50_000,
-  maxBrakeForce: 60,
+  maxBrakeForce: 45,
   engineBrakeForce: 3,
   aeroDragCoefficient: 0.45,
   reverseForceRatio: 0.5,

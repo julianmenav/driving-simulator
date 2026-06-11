@@ -9,7 +9,7 @@ import {
   type RapierRigidBody,
 } from '@react-three/rapier';
 import { useEffect, useRef } from 'react';
-import type { Group } from 'three';
+import { DoubleSide, type Group } from 'three';
 import type { Game } from '@application/createGame';
 import { DEFAULT_VEHICLE_SPEC as spec } from '@domain/vehicle/VehicleSpec';
 import { RearViewMirror } from '@infrastructure/rendering/RearViewMirror';
@@ -74,7 +74,9 @@ export function PlayerVehicle({ game }: { game: Game }) {
     FRONT_WHEELS.forEach((i) => controller.setWheelSteering(i, steeringRef.current));
     // La fuerza de motor total se reparte entre las ruedas motrices.
     REAR_WHEELS.forEach((i) => controller.setWheelEngineForce(i, engineForce / REAR_WHEELS.length));
-    [...FRONT_WHEELS, ...REAR_WHEELS].forEach((i) => controller.setWheelBrake(i, brakeForce));
+    // Reparto de frenada 100/60: el eje trasero bloqueado hace guiñar el coche.
+    FRONT_WHEELS.forEach((i) => controller.setWheelBrake(i, brakeForce));
+    REAR_WHEELS.forEach((i) => controller.setWheelBrake(i, brakeForce * 0.6));
 
     // Resistencia aerodinámica: F = -coef · |v| · v
     const chassis = chassisRef.current;
@@ -130,28 +132,28 @@ export function PlayerVehicle({ game }: { game: Game }) {
       </mesh>
 
       {/* Cabina: pilares A, marco del parabrisas, techo, pilares B y ventanillas */}
-      <mesh castShadow position={[0.78, 1.0, 0.85]} rotation-x={-0.35}>
-        <boxGeometry args={[0.06, 0.8, 0.06]} />
+      <mesh castShadow position={[0.78, 1.03, 0.85]} rotation-x={-0.35}>
+        <boxGeometry args={[0.06, 0.85, 0.06]} />
         <meshStandardMaterial color="#1f2227" />
       </mesh>
-      <mesh castShadow position={[-0.78, 1.0, 0.85]} rotation-x={-0.35}>
-        <boxGeometry args={[0.06, 0.8, 0.06]} />
+      <mesh castShadow position={[-0.78, 1.03, 0.85]} rotation-x={-0.35}>
+        <boxGeometry args={[0.06, 0.85, 0.06]} />
         <meshStandardMaterial color="#1f2227" />
       </mesh>
-      <mesh castShadow position={[0, 1.3, 0.72]}>
+      <mesh castShadow position={[0, 1.36, 0.72]}>
         <boxGeometry args={[1.64, 0.1, 0.1]} />
         <meshStandardMaterial color="#1f2227" />
       </mesh>
-      <mesh castShadow position={[0, 1.33, -0.12]}>
-        <boxGeometry args={[1.64, 0.07, 1.7]} />
+      <mesh castShadow position={[0, 1.39, -0.12]}>
+        <boxGeometry args={[1.8, 0.07, 1.9]} />
         <meshStandardMaterial color="#1f2227" />
       </mesh>
-      <mesh castShadow position={[0.8, 1.0, -0.95]}>
-        <boxGeometry args={[0.08, 0.7, 0.08]} />
+      <mesh castShadow position={[0.8, 1.05, -0.95]}>
+        <boxGeometry args={[0.08, 0.78, 0.08]} />
         <meshStandardMaterial color="#1f2227" />
       </mesh>
-      <mesh castShadow position={[-0.8, 1.0, -0.95]}>
-        <boxGeometry args={[0.08, 0.7, 0.08]} />
+      <mesh castShadow position={[-0.8, 1.05, -0.95]}>
+        <boxGeometry args={[0.08, 0.78, 0.08]} />
         <meshStandardMaterial color="#1f2227" />
       </mesh>
       <mesh position={[0.85, 0.78, -0.05]}>
@@ -163,17 +165,35 @@ export function PlayerVehicle({ game }: { game: Game }) {
         <meshStandardMaterial color="#1f2227" />
       </mesh>
 
-      {/* Soportes de los retrovisores */}
-      <mesh position={[0, 1.25, 0.78]}>
+      {/* Cristales: parabrisas, ventanillas y luneta */}
+      <mesh position={[0, 1.03, 0.85]} rotation-x={-0.35}>
+        <planeGeometry args={[1.56, 0.85]} />
+        <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
+      </mesh>
+      <mesh position={[0.86, 1.05, -0.05]} rotation-y={Math.PI / 2}>
+        <planeGeometry args={[1.7, 0.6]} />
+        <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
+      </mesh>
+      <mesh position={[-0.86, 1.05, -0.05]} rotation-y={Math.PI / 2}>
+        <planeGeometry args={[1.7, 0.6]} />
+        <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 1.06, -0.99]}>
+        <planeGeometry args={[1.5, 0.55]} />
+        <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
+      </mesh>
+
+      {/* Soportes de los retrovisores: vástago central y brazos de puerta */}
+      <mesh position={[0, 1.25, 0.72]}>
         <boxGeometry args={[0.03, 0.1, 0.03]} />
         <meshStandardMaterial color="#101216" />
       </mesh>
-      <mesh position={[0.9, 0.85, 0.88]}>
+      <mesh position={[0.9, 0.93, 0.9]}>
         <boxGeometry args={[0.14, 0.035, 0.035]} />
         <meshStandardMaterial color="#101216" />
       </mesh>
-      <mesh position={[-0.78, 0.68, 1.2]}>
-        <boxGeometry args={[0.035, 0.34, 0.035]} />
+      <mesh position={[-0.9, 0.93, 1.15]}>
+        <boxGeometry args={[0.14, 0.035, 0.035]} />
         <meshStandardMaterial color="#101216" />
       </mesh>
 
@@ -193,13 +213,13 @@ export function PlayerVehicle({ game }: { game: Game }) {
         </group>
       ))}
 
-      {/* Retrovisores: interior, izquierdo (lado conductor) y derecho */}
-      <RearViewMirror position={[0, 1.16, 0.8]} width={0.3} height={0.09} fov={20} />
-      <RearViewMirror position={[0.97, 0.85, 0.88]} width={0.22} height={0.13} tilt={0.3} cameraYaw={-0.18} fov={38} phase={1} />
-      <RearViewMirror position={[-0.78, 0.85, 1.2]} width={0.22} height={0.13} tilt={-0.3} cameraYaw={0.25} fov={38} phase={1} />
+      {/* Retrovisores: interior y de puerta (por encima de la línea de ventanilla) */}
+      <RearViewMirror position={[0, 1.16, 0.72]} width={0.3} height={0.09} fov={20} />
+      <RearViewMirror position={[0.97, 0.93, 0.9]} width={0.22} height={0.13} tilt={0.3} cameraYaw={-0.15} fov={38} phase={1} />
+      <RearViewMirror position={[-0.97, 0.93, 1.15]} width={0.22} height={0.13} tilt={-0.3} cameraYaw={0.15} fov={38} phase={1} />
 
       {/* Asiento del conductor (izquierda); mirando hacia +z */}
-      <PerspectiveCamera makeDefault fov={72} near={0.1} far={500} position={[0.3, 0.95, 0.15]} rotation={[0, Math.PI, 0]} />
+      <PerspectiveCamera makeDefault fov={80} near={0.1} far={500} position={[0.3, 0.95, 0.15]} rotation={[0, Math.PI, 0]} />
     </RigidBody>
   );
 }

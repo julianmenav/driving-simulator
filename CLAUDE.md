@@ -78,6 +78,8 @@ Orden de implementación de fase 1 (cada paso da resultado visible):
 1. Al soltar el acelerador el coche no decelera de forma natural (sin drag ni freno motor). → Resistencia aerodinámica ∝ v² sobre el chasis + freno motor al soltar.
 2. La aceleración era demasiado rápida y lineal. → Modelo de potencia constante: fuerza disponible = min(F_max, P/v), con potencia/fuerza moderadas en el spec.
 3. Los retrovisores flotaban y no se veía carrocería en primera persona. → Cabina visible: pilares A/B, marco, techo, línea de ventanillas y soportes de espejos — sin invadir la vista útil.
+4. (2ª ronda) El espejo izquierdo quedaba medio tapado por la carrocería, el derecho estaba en el capó en vez de en la puerta, faltaba efecto cristal y se quería ver el propio coche en los laterales. → Espejos de puerta a y=0.93 (sobre la línea de ventanilla), FOV de cámara a 80° para que el derecho entre en pantalla en su sitio real, cámaras de espejo con yaw ±0.15 (franja del propio coche visible), y cristales translúcidos (parabrisas/ventanillas/luneta, opacity 0.16 tintado azul).
+5. (Detectado en verificación) El coche guiñaba al frenar fuerte (eje trasero bloqueado). → Reparto de frenada 100/60 delante/detrás y maxBrakeForce 60→45. Queda una deriva leve residual al frenar a fondo.
 
 ## Comandos y entorno
 
