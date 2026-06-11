@@ -67,8 +67,8 @@ Orden de implementación de fase 1 (cada paso da resultado visible):
 
 - ✅ Paso 1 completado (jun 2026): esqueleto Vite+TS+React 19, capas con alias (`@domain`, `@application`, `@infrastructure`, `@ui`), `EventBus` tipado en dominio con 9 tests, `createGame()` como raíz de composición.
 - ✅ Paso 2 completado (jun 2026): escena R3F con suelo/carretera/obstáculos y vehículo Rapier conducible en primera persona. `ControlsPort` + `KeyboardControlsAdapter` (WASD/flechas, con tests). `VehicleSpec` en dominio (convención de ejes: **+z = frente, +x = izquierda del conductor**; eje de rueda -x para que fuerza positiva empuje a +z). `PlayerVehicle` usa `world.createVehicleController` (DynamicRayCastVehicleController) con `useBeforePhysicsStep`; publica `vehicle/stateUpdated` cada tick. Verificado con captura headless: render, conducción y giro OK. Pendiente de pulir: tuning de frenada/suspensión, tamaño del salpicadero en pantalla.
-- Provisional: S con el coche parado = marcha atrás (lógica en `PlayerVehicle`); se sustituye por la caja D/N/R en el paso 3.
-- Siguiente: paso 3 — caja de cambios D/N/R en dominio.
+- ✅ Paso 3 completado (jun 2026): `AutomaticGearbox` en dominio (palanca R·N·D con Q/E; no engrana D/R en sentido contrario a >6 km/h; `computeDrive` decide fuerzas según marcha; publica `vehicle/gearChanged`). `ControlsPort.consumeShiftRequests()` como cola de pulsaciones. El coche arranca en N. Verificado en headless: en N no avanza, tras E (D) sí.
+- Siguiente: paso 4 — HUD con velocímetro (suscribirse a `vehicle/stateUpdated` y `vehicle/gearChanged`).
 
 ## Comandos y entorno
 

@@ -1,9 +1,12 @@
 import type { ControlsPort, ControlsState } from '@application/ports/ControlsPort';
+import type { ShiftDirection } from '@domain/vehicle/Gearbox';
 
 const THROTTLE_KEYS = ['KeyW', 'ArrowUp'];
 const BRAKE_KEYS = ['KeyS', 'ArrowDown'];
 const LEFT_KEYS = ['KeyA', 'ArrowLeft'];
 const RIGHT_KEYS = ['KeyD', 'ArrowRight'];
+const SHIFT_UP_KEY = 'KeyE';
+const SHIFT_DOWN_KEY = 'KeyQ';
 
 /** Códigos cuyo comportamiento por defecto (scroll) hay que anular. */
 const CAPTURED_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
@@ -17,10 +20,15 @@ export interface KeyEventSource {
 
 export class KeyboardControlsAdapter implements ControlsPort {
   private readonly pressed = new Set<string>();
+  private shiftRequests: ShiftDirection[] = [];
   private source: KeyEventSource | null = null;
 
   private readonly onKeyDown: KeyListener = (event) => {
     if (CAPTURED_KEYS.includes(event.code)) event.preventDefault();
+    if (!event.repeat) {
+      if (event.code === SHIFT_UP_KEY) this.shiftRequests.push('up');
+      if (event.code === SHIFT_DOWN_KEY) this.shiftRequests.push('down');
+    }
     this.pressed.add(event.code);
   };
 
@@ -31,6 +39,7 @@ export class KeyboardControlsAdapter implements ControlsPort {
   /** Al perder el foco no llegan los keyup: soltarlo todo. */
   private readonly onBlur: KeyListener = () => {
     this.pressed.clear();
+    this.shiftRequests = [];
   };
 
   attach(source: KeyEventSource): void {
@@ -48,6 +57,7 @@ export class KeyboardControlsAdapter implements ControlsPort {
     this.source.removeEventListener('blur', this.onBlur);
     this.source = null;
     this.pressed.clear();
+    this.shiftRequests = [];
   }
 
   read(): ControlsState {
@@ -57,5 +67,11 @@ export class KeyboardControlsAdapter implements ControlsPort {
       brake: anyOf(BRAKE_KEYS) ? 1 : 0,
       steering: (anyOf(LEFT_KEYS) ? 1 : 0) - (anyOf(RIGHT_KEYS) ? 1 : 0),
     };
+  }
+
+  consumeShiftRequests(): ShiftDirection[] {
+    const requests = this.shiftRequests;
+    this.shiftRequests = [];
+    return requests;
   }
 }

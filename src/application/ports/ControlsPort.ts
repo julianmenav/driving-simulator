@@ -1,3 +1,5 @@
+import type { ShiftDirection } from '@domain/vehicle/Gearbox';
+
 export interface ControlsState {
   /** Acelerador, 0..1. */
   throttle: number;
@@ -13,4 +15,9 @@ export interface ControlsState {
  */
 export interface ControlsPort {
   read(): ControlsState;
+  /**
+   * Devuelve y vacía la cola de peticiones de cambio de marcha acumuladas
+   * desde la última llamada (pulsaciones, no estado mantenido).
+   */
+  consumeShiftRequests(): ShiftDirection[];
 }

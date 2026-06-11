@@ -60,29 +60,22 @@ export function PlayerVehicle({ game }: { game: Game }) {
     const { throttle, brake, steering } = game.controls.read();
     const dt = world.timestep;
     const speed = controller.currentVehicleSpeed(); // m/s, positivo hacia delante
+    const speedKmh = speed * 3.6;
 
     // Volante suavizado y menos sensible a alta velocidad.
     const speedFactor = 1 / (1 + Math.abs(speed) * 0.06);
     const targetSteering = steering * spec.maxSteeringAngle * speedFactor;
     steeringRef.current += (targetSteering - steeringRef.current) * Math.min(1, spec.steeringSpeed * dt);
 
-    let engineForce = throttle * spec.maxEngineForce;
-    let brakeForce = 0;
-    if (brake > 0) {
-      if (speed > 0.5) {
-        brakeForce = brake * spec.maxBrakeForce;
-      } else {
-        // Provisional hasta la caja D/N/R (paso 3): frenar parado = marcha atrás.
-        engineForce = -brake * spec.maxEngineForce * spec.reverseForceRatio;
-      }
-    }
+    game.controls.consumeShiftRequests().forEach((direction) => game.gearbox.shift(direction, speedKmh));
+    const { engineForce, brakeForce } = game.gearbox.computeDrive({ throttle, brake }, speedKmh);
 
     FRONT_WHEELS.forEach((i) => controller.setWheelSteering(i, steeringRef.current));
     REAR_WHEELS.forEach((i) => controller.setWheelEngineForce(i, engineForce));
     [...FRONT_WHEELS, ...REAR_WHEELS].forEach((i) => controller.setWheelBrake(i, brakeForce));
     controller.updateVehicle(dt);
 
-    game.events.publish('vehicle/stateUpdated', { speedKmh: speed * 3.6 });
+    game.events.publish('vehicle/stateUpdated', { speedKmh });
   });
 
   // Coloca las ruedas visuales según suspensión, giro y rodadura.

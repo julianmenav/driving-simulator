@@ -19,8 +19,8 @@ class FakeEventSource implements KeyEventSource {
     this.listeners.get(type)?.delete(listener);
   }
 
-  emit(type: string, code = ''): void {
-    const event = { code, preventDefault: () => {} } as KeyboardEvent;
+  emit(type: string, code = '', repeat = false): void {
+    const event = { code, repeat, preventDefault: () => {} } as KeyboardEvent;
     this.listeners.get(type)?.forEach((listener) => listener(event));
   }
 }
@@ -74,6 +74,35 @@ describe('KeyboardControlsAdapter', () => {
     source.emit('blur');
 
     expect(adapter.read()).toEqual({ throttle: 0, brake: 0, steering: 0 });
+  });
+
+  it('E y Q encolan cambios de marcha y la cola se vacía al consumirla', () => {
+    const { source, adapter } = createAttached();
+
+    source.emit('keydown', 'KeyE');
+    source.emit('keydown', 'KeyQ');
+
+    expect(adapter.consumeShiftRequests()).toEqual(['up', 'down']);
+    expect(adapter.consumeShiftRequests()).toEqual([]);
+  });
+
+  it('ignora los autorepeat de E/Q al mantener la tecla', () => {
+    const { source, adapter } = createAttached();
+
+    source.emit('keydown', 'KeyE');
+    source.emit('keydown', 'KeyE', true);
+    source.emit('keydown', 'KeyE', true);
+
+    expect(adapter.consumeShiftRequests()).toEqual(['up']);
+  });
+
+  it('al perder el foco también se descarta la cola de cambios', () => {
+    const { source, adapter } = createAttached();
+
+    source.emit('keydown', 'KeyE');
+    source.emit('blur');
+
+    expect(adapter.consumeShiftRequests()).toEqual([]);
   });
 
   it('tras detach deja de escuchar', () => {

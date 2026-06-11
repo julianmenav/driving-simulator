@@ -1,10 +1,13 @@
 import { EventBus } from '@domain/events/EventBus';
 import type { GameEventBus, GameEvents } from '@domain/events/GameEvents';
+import { AutomaticGearbox } from '@domain/vehicle/Gearbox';
+import { DEFAULT_VEHICLE_SPEC } from '@domain/vehicle/VehicleSpec';
 import type { ControlsPort } from './ports/ControlsPort';
 
 export interface Game {
   readonly events: GameEventBus;
   readonly controls: ControlsPort;
+  readonly gearbox: AutomaticGearbox;
 }
 
 export interface GameDependencies {
@@ -17,5 +20,6 @@ export interface GameDependencies {
  */
 export function createGame({ controls }: GameDependencies): Game {
   const events: GameEventBus = new EventBus<GameEvents>();
-  return { events, controls };
+  const gearbox = new AutomaticGearbox(DEFAULT_VEHICLE_SPEC, events);
+  return { events, controls, gearbox };
 }

@@ -8,8 +8,8 @@ export function App({ game }: { game: Game }) {
       <div className="overlay">
         <h1>Simulador de conducción</h1>
         <p>
-          <kbd>W</kbd>/<kbd>↑</kbd> acelerar · <kbd>S</kbd>/<kbd>↓</kbd> frenar (parado: marcha atrás) ·{' '}
-          <kbd>A</kbd>/<kbd>D</kbd> dirección
+          <kbd>W</kbd>/<kbd>↑</kbd> acelerar · <kbd>S</kbd>/<kbd>↓</kbd> frenar · <kbd>A</kbd>/<kbd>D</kbd> dirección ·{' '}
+          <kbd>E</kbd>/<kbd>Q</kbd> marcha (R·N·D)
         </p>
       </div>
     </div>
