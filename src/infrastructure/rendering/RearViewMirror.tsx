@@ -1,7 +1,7 @@
 import { useFBO } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useRef } from 'react';
-import { type Group, PerspectiveCamera as ThreePerspectiveCamera, RepeatWrapping } from 'three';
+import { useEffect, useMemo, useRef } from 'react';
+import { type Group, PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 
 interface RearViewMirrorProps {
   /** Position in chassis local space. */
@@ -15,6 +15,8 @@ interface RearViewMirrorProps {
   /** Rear camera pitch (rad about X; negative looks down at the road). */
   cameraPitch?: number;
   fov?: number;
+  /** Barrel (fisheye) distortion strength for a convex-mirror look. */
+  distortion?: number;
   /** Frame offset to spread the cost across mirrors. */
   phase?: number;
 }
@@ -23,10 +25,36 @@ interface RearViewMirrorProps {
 const REFRESH_INTERVAL = 2;
 const FBO_WIDTH = 384;
 
+const MIRROR_VERTEX = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+// Samples the rear-camera render target with a subtle radial (barrel) stretch
+// so the mirror reads like a convex wide-angle one, and flips X (a mirror
+// reflects). uDistortion = 0 gives a plain flat mirror.
+const MIRROR_FRAGMENT = /* glsl */ `
+  uniform sampler2D map;
+  uniform float uDistortion;
+  varying vec2 vUv;
+  void main() {
+    vec2 c = vUv - 0.5;
+    float r2 = dot(c, c);
+    vec2 uv = 0.5 + c * (1.0 + uDistortion * r2);
+    uv.x = 1.0 - uv.x;
+    uv = clamp(uv, 0.0, 1.0);
+    gl_FragColor = texture2D(map, uv);
+  }
+`;
+
 /**
  * Rear-view mirror: a plane showing the scene rendered from a rear-facing
- * camera (chassis local -z), drawn into a low-resolution render target. The
- * texture is flipped in X because a mirror reflects.
+ * camera (chassis local -z), drawn into a low-resolution render target. A
+ * shader flips it horizontally (a mirror reflects) and can add a touch of
+ * convex/fisheye distortion.
  */
 export function RearViewMirror({
   position,
@@ -36,6 +64,7 @@ export function RearViewMirror({
   cameraYaw = 0,
   cameraPitch = 0,
   fov = 35,
+  distortion = 0,
   phase = 0,
 }: RearViewMirrorProps) {
   const aspect = width / height;
@@ -44,11 +73,10 @@ export function RearViewMirror({
   const displayRef = useRef<Group>(null);
   const frameCount = useRef(phase);
 
-  useEffect(() => {
-    fbo.texture.wrapS = RepeatWrapping;
-    fbo.texture.repeat.x = -1;
-    fbo.texture.offset.x = 1;
-  }, [fbo]);
+  const uniforms = useMemo(
+    () => ({ map: { value: fbo.texture }, uDistortion: { value: distortion } }),
+    [fbo.texture, distortion],
+  );
 
   // The mirror surface lives on layer 1 (seen by the first-person camera, not
   // by other mirror cameras) so mirrors never show up inside each other.
@@ -76,7 +104,7 @@ export function RearViewMirror({
         {/* The plane faces +z after rotating π: towards the driver */}
         <mesh position-z={-0.015} rotation-y={Math.PI}>
           <planeGeometry args={[width, height]} />
-          <meshBasicMaterial map={fbo.texture} toneMapped={false} />
+          <shaderMaterial uniforms={uniforms} vertexShader={MIRROR_VERTEX} fragmentShader={MIRROR_FRAGMENT} toneMapped={false} />
         </mesh>
       </group>
       {/* Rear camera: by default looks at -z, the back of the car */}

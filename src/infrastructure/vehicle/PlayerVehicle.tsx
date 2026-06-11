@@ -161,9 +161,9 @@ export function PlayerVehicle({ game }: { game: Game }) {
           The door cameras look back with a slight downward pitch and a touch of
           inward yaw, so they catch the road plus a sliver of our own bodywork.
           Lower fov = a little zoom. */}
-      <RearViewMirror position={[0, 1.16, 0.72]} width={0.3} height={0.09} fov={20} />
-      <RearViewMirror position={[0.99, 0.92, 1.0]} width={0.22} height={0.13} tilt={0.32} cameraYaw={-0.16} cameraPitch={-0.1} fov={26} phase={1} />
-      <RearViewMirror position={[-0.99, 0.92, 1.0]} width={0.22} height={0.13} tilt={-0.32} cameraYaw={0.16} cameraPitch={-0.1} fov={26} phase={1} />
+      <RearViewMirror position={[0, 1.16, 0.72]} width={0.3} height={0.09} fov={22} distortion={0.12} />
+      <RearViewMirror position={[0.99, 0.92, 1.0]} width={0.22} height={0.13} tilt={0.32} cameraYaw={-0.24} cameraPitch={-0.12} fov={54} distortion={0.3} phase={1} />
+      <RearViewMirror position={[-0.99, 0.92, 1.0]} width={0.22} height={0.13} tilt={-0.32} cameraYaw={0.24} cameraPitch={-0.12} fov={54} distortion={0.3} phase={1} />
 
       {/* Driver seat (left side); raised eye point for a clear road view over
           the low wheel, looking towards +z */}

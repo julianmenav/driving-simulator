@@ -1,104 +1,108 @@
-# Simulador de conducción (driving-simulator)
+# Driving Simulator (driving-simulator)
 
-Juego de conducción en navegador, en primera persona, orientado a práctica/examen de conducir.
-Construcción **modular y escalable, con resultados visibles por fase**.
+A first-person, in-browser driving game aimed at driving practice/exams.
+Built to be **modular and scalable, with visible results per phase**.
 
-## Stack (decidido)
+> Note: the in-game / end-user-facing text is in Spanish on purpose (the target
+> audience is Spanish-speaking). Everything else — code, comments, this document —
+> is in English.
+
+## Stack (decided)
 
 - **Vite + TypeScript + React 19**
-- **@react-three/fiber v9** (render 3D) + **@react-three/drei** (helpers)
-- **@react-three/rapier** (físicas Rapier WASM). Para el coche: `DynamicRayCastVehicleController` de Rapier (acceso vía `useRapier` al API crudo).
-- **Zustand** para estado global de UI/juego
-- UI 2D (HUD, menús, retrovisores como overlay) en React normal sobre el canvas
+- **@react-three/fiber v9** (3D rendering) + **@react-three/drei** (helpers)
+- **@react-three/rapier** (Rapier WASM physics). For the car: Rapier's `DynamicRayCastVehicleController` (accessed via `useRapier` to the raw API).
+- **Zustand** for global UI/game state
+- 2D UI (HUD, menus, mirrors as overlay) in plain React on top of the canvas
 
-Regla de oro de rendimiento: el estado por-frame va en refs y `useFrame`, **nunca** en estado de React (evitar re-renders en el game loop).
+Performance golden rule: per-frame state lives in refs and `useFrame`, **never** in React state (avoid re-renders in the game loop).
 
-## Arquitectura (decidida): hexagonal + DDD, con matiz
+## Architecture (decided): hexagonal + DDD, with a nuance
 
-Hexagonal aplicada a las **reglas del juego**, no al game loop. Render y físicas son
-infraestructura con su propio paradigma (loop por frame, mutación, refs).
+Hexagonal applied to the **game rules**, not the game loop. Rendering and physics are
+infrastructure with their own paradigm (per-frame loop, mutation, refs).
 
 ```
 src/
-├── domain/          # Vehicle, GearState, Infraction, reglas, GameEvent, EventBus — CERO imports de Three.js/Rapier
-├── application/     # casos de uso (StartExam, ProcessTick...), PracticeMode, ExamMode, ports (interfaces)
+├── domain/          # Vehicle, GearState, Infraction, rules, GameEvent, EventBus — ZERO imports of Three.js/Rapier
+├── application/     # use cases (StartExam, ProcessTick...), PracticeMode, ExamMode, ports (interfaces)
 ├── infrastructure/  # physics/ (Rapier), rendering/ (R3F), input/, maps/, persistence/
-└── ui/              # componentes React: HUD, espejos, menús
+└── ui/              # React components: HUD, mirrors, menus
 ```
 
-Flujo por frame: físicas → snapshot de estado → dominio evalúa reglas → emite eventos
-(`SpeedLimitExceeded`, `PedestrianHit`...) → los modos de juego reaccionan.
+Per-frame flow: physics → state snapshot → domain evaluates rules → emits events
+(`SpeedLimitExceeded`, `PedestrianHit`...) → the game modes react.
 
-El **event bus de dominio es el corazón del diseño**: se construye primero, en fase 1.
-Práctica y examen son dos políticas suscritas al mismo bus.
+The **domain event bus is the heart of the design**: it is built first, in phase 1.
+Practice and exam are two policies subscribed to the same bus.
 
-## Backend (decidido)
+## Backend (decided)
 
-**v1 sin backend, todo en frontend.** Juego local sin sesión. La apertura a futuro
-(OAuth, persistencia, rankings en tiempo real) se garantiza vía puertos: `ScoreRepository`,
-`ExamResultRepository`, etc. con adaptadores locales (localStorage/IndexedDB) hoy, y
-adaptadores HTTP/WebSocket cuando lleguen sesiones. Nota: un ranking competitivo futuro
-necesitará validación server-side (anti-cheat) — problema de esa fase, no de la v1.
+**v1 with no backend, everything in the frontend.** Local, sessionless game. Future
+openness (OAuth, persistence, real-time rankings) is guaranteed via ports: `ScoreRepository`,
+`ExamResultRepository`, etc. with local adapters (localStorage/IndexedDB) today, and
+HTTP/WebSocket adapters once sessions arrive. Note: a future competitive ranking will
+need server-side validation (anti-cheat) — a problem for that phase, not for v1.
 
-## Fase 1 — Simulador básico
+## Phase 1 — Basic simulator
 
-- Acciones: acelerar, frenar, cambio de marcha automático (D, R, N) — máquina de estados en dominio que firma el signo del torque.
-- Vista en primera persona desde dentro del vehículo, con retrovisores y velocímetro/acelerómetro en la UI.
-- Retrovisores: render targets (`RenderTexture`/`useFBO` de drei). Coste real: cada espejo re-renderiza la escena → resolución baja y refresco ≤30 fps en espejos.
+- Actions: accelerate, brake, automatic gear shifting (D, R, N) — a state machine in the domain that signs the torque.
+- First-person view from inside the vehicle, with mirrors and a speedometer/accelerometer in the UI.
+- Mirrors: render targets (drei's `RenderTexture`/`useFBO`). Real cost: each mirror re-renders the scene → low resolution and ≤30 fps refresh on mirrors.
 
-Orden de implementación de fase 1 (cada paso da resultado visible):
-1. Esqueleto Vite+TS con las capas y el event bus con tests
-2. Escena R3F con suelo y vehículo Rapier conducible
-3. Caja de cambios D/R/N en dominio
-4. HUD con velocímetro
-5. Retrovisores
+Phase 1 implementation order (each step yields a visible result):
+1. Vite+TS skeleton with the layers and the event bus with tests
+2. R3F scene with ground and a drivable Rapier vehicle
+3. D/R/N gearbox in the domain
+4. HUD with speedometer
+5. Mirrors
 
-## Features futuras (el diseño debe mantenerse compatible)
+## Future features (the design must stay compatible)
 
-1. **Mapas intercambiables**: cada mapa = GLTF (geometría) + manifest JSON (spawns, zonas de trigger, señales con límites, rutas de NPCs). Puerto `MapRepository`. Añadir mapa = añadir assets, cero código.
-2. **NPCs** en movimiento, con físicas y atropellables: character controller cinemático mientras caminan → conmutar a rigid body dinámico al impacto.
-3. **Triggers de infracciones**: colliders *sensores* de Rapier (eventos de intersección) definidos en el manifest del mapa — borde de carretera, paso de cebra con NPC cruzando, zonas de señal. El exceso de velocidad por defecto es regla continua evaluada cada tick, no trigger espacial.
-4. **UI de inicio** (selección de modo / configuración): React puro.
-5. **Modos de juego** sobre el event bus:
-   - **Práctica**: conducción libre con avisos de infracciones.
-   - **Examen**: suspendes al acumular X infracciones.
+1. **Swappable maps**: each map = GLTF (geometry) + JSON manifest (spawns, trigger zones, signs with limits, NPC routes). `MapRepository` port. Adding a map = adding assets, zero code.
+2. **NPCs** moving, with physics, and hittable: kinematic character controller while walking → switch to dynamic rigid body on impact.
+3. **Infraction triggers**: Rapier *sensor* colliders (intersection events) defined in the map manifest — road edge, crosswalk with an NPC crossing, sign zones. Speeding by default is a continuous rule evaluated every tick, not a spatial trigger.
+4. **Start UI** (mode selection / configuration): plain React.
+5. **Game modes** on top of the event bus:
+   - **Practice**: free driving with infraction warnings.
+   - **Exam**: you fail once you accumulate X infractions.
 
-## Estado actual
+## Current status
 
-- ✅ Paso 1 completado (jun 2026): esqueleto Vite+TS+React 19, capas con alias (`@domain`, `@application`, `@infrastructure`, `@ui`), `EventBus` tipado en dominio con 9 tests, `createGame()` como raíz de composición.
-- ✅ Paso 2 completado (jun 2026): escena R3F con suelo/carretera/obstáculos y vehículo Rapier conducible en primera persona. `ControlsPort` + `KeyboardControlsAdapter` (WASD/flechas, con tests). `VehicleSpec` en dominio (convención de ejes: **+z = frente, +x = izquierda del conductor**; eje de rueda -x para que fuerza positiva empuje a +z). `PlayerVehicle` usa `world.createVehicleController` (DynamicRayCastVehicleController) con `useBeforePhysicsStep`; publica `vehicle/stateUpdated` cada tick. Verificado con captura headless: render, conducción y giro OK. Pendiente de pulir: tuning de frenada/suspensión, tamaño del salpicadero en pantalla.
-- ✅ Paso 3 completado (jun 2026): `AutomaticGearbox` en dominio (palanca R·N·D con Q/E; no engrana D/R en sentido contrario a >6 km/h; `computeDrive` decide fuerzas según marcha; publica `vehicle/gearChanged`). `ControlsPort.consumeShiftRequests()` como cola de pulsaciones. El coche arranca en N. Verificado en headless: en N no avanza, tras E (D) sí.
-- ✅ Paso 4 completado (jun 2026): HUD con velocímetro y marcha (`src/ui/Hud.tsx`). La velocidad (60 Hz por el bus) se escribe directa al DOM vía ref; la marcha usa estado React.
-- ✅ Paso 5 completado (jun 2026): retrovisores (`RearViewMirror`): plano + cámara trasera (-z local) + `useFBO` 384px, textura invertida en X, refresco 1 de cada 2 frames con desfase entre espejos. Central + laterales montados en `PlayerVehicle`.
-- **FASE 1 COMPLETA.** Siguiente: features futuras — sugerido empezar por mapas data-driven (GLTF + manifest) o sistema de infracciones sobre el bus.
-- ✅ Overhaul visual de cabina (jun 2026): toda la cosmética interior extraída a `src/infrastructure/vehicle/Cabin.tsx` (salpicadero remodelado con fascia + carcasa de instrumentos + salidas de aire/mandos, paneles de puerta continuos con reposabrazos/tirador, pilares, cristales, **volante lowpoly animado** que gira con `steeringRef`, y **cuadro de instrumentos 3D diegético** con velocidad/marcha vía `Text` de drei — speed imperativo por el bus, gear por estado: muestra la fila **R·N·D con solo la marcha activa encendida** y las otras en gris apagado; panel pequeño minimalista sobre el volante apoyado en la carcasa de instrumentos). El **HUD 2D se retiró** (borrado `Hud.tsx` y sus estilos). Volante alto y **cámara del conductor subida a y=1.10** (alta a propósito: el salpicadero quitaba mucho espacio y así se ve bien la carretera). Parabrisas ampliado (techo/marco superior subidos, cristal mayor).
-- **Sistema de render layers para la cabina (clave):** la cosmética interior + luces de relleno propias (hemisphere + directional) están en **layer 1**; la carrocería/capó/ruedas exteriores en **layer 2**; el mundo (suelo, carretera, conos) en layer 0. La cámara del conductor habilita layers 0+1+2; las cámaras de los espejos se quedan en layer 0, así reflejan **solo el mundo detrás** (sin trim interior y sin caras en sombra del propio coche, que era la "raya" negra de los espejos). Las cámaras de espejo de puerta apuntan casi rectas atrás con leve `cameraPitch` para enmarcar la carretera como el central. **Ojo:** en three.js las luces solo iluminan objetos de su misma layer → la cabina (layer 1) necesita su propio rig de luces en layer 1 (el sol de la escena, layer 0, no la alcanza y queda negra). Verificado en headless.
+- ✅ Step 1 done (Jun 2026): Vite+TS+React 19 skeleton, layers with aliases (`@domain`, `@application`, `@infrastructure`, `@ui`), typed `EventBus` in the domain with 9 tests, `createGame()` as the composition root.
+- ✅ Step 2 done (Jun 2026): R3F scene with ground/road/obstacles and a drivable Rapier vehicle in first person. `ControlsPort` + `KeyboardControlsAdapter` (WASD/arrows, with tests). `VehicleSpec` in the domain (axis convention: **+z = front, +x = driver's left**; wheel axle -x so positive force pushes towards +z). `PlayerVehicle` uses `world.createVehicleController` (DynamicRayCastVehicleController) with `useBeforePhysicsStep`; publishes `vehicle/stateUpdated` every tick. Verified with a headless capture: render, driving and turning OK. Still to polish: braking/suspension tuning, dashboard size on screen.
+- ✅ Step 3 done (Jun 2026): `AutomaticGearbox` in the domain (R·N·D lever with Q/E; will not engage D/R against the direction of travel above 6 km/h; `computeDrive` decides forces per gear; publishes `vehicle/gearChanged`). `ControlsPort.consumeShiftRequests()` as a queue of key presses. The car starts in N. Verified headless: in N it does not move, after E (D) it does.
+- ✅ Step 4 done (Jun 2026): HUD with speedometer and gear (`src/ui/Hud.tsx`). Speed (60 Hz over the bus) is written directly to the DOM via ref; the gear uses React state.
+- ✅ Step 5 done (Jun 2026): mirrors (`RearViewMirror`): plane + rear camera (local -z) + `useFBO` 384px, texture flipped in X, refresh 1 out of every 2 frames with an offset between mirrors. Center + side mirrors mounted on `PlayerVehicle`.
+- **PHASE 1 COMPLETE.** Next: future features — suggested to start with data-driven maps (GLTF + manifest) or the infraction system on top of the bus.
+- ✅ Cabin visual overhaul (Jun 2026): all interior cosmetics extracted to `src/infrastructure/vehicle/Cabin.tsx` (reworked dashboard with fascia + instrument housing + air vents/controls, continuous door panels with armrest/pull, pillars, glass, **animated lowpoly steering wheel** that turns with `steeringRef`, and a **diegetic 3D instrument cluster** with speed/gear via drei's `Text` — speed imperative over the bus, gear via state: shows the **R·N·D row with only the active gear lit** and the others dimmed grey; a small minimalist panel above the wheel resting on the instrument housing). The **2D HUD was removed** (deleted `Hud.tsx` and its styles). High wheel and **driver camera raised to y=1.10** (high on purpose: the dashboard took up too much room, so this gives a clear view of the road). Enlarged windshield (roof/upper frame raised, larger glass).
+- **Render layer system for the cabin (key):** the interior cosmetics + their own fill lights (hemisphere + directional) are on **layer 1**; the exterior bodywork/hood/wheels on **layer 2**; the world (ground, road, cones) on layer 0. The driver camera enables layers 0+1+2; the mirror cameras stay on layer 0, so they reflect **only the world behind** (no interior trim and no shadowed faces of our own car, which was the black "streak" in the mirrors). The door mirror cameras point almost straight back with a slight `cameraPitch` to frame the road like the center one. **Heads up:** in three.js lights only illuminate objects on their own layer → the cabin (layer 1) needs its own light rig on layer 1 (the scene's sun, layer 0, does not reach it and it goes black). Verified headless.
 
-## Feedback de jugabilidad de Julián (jun 2026)
+## Julián's gameplay feedback (Jun 2026)
 
-1. Al soltar el acelerador el coche no decelera de forma natural (sin drag ni freno motor). → Resistencia aerodinámica ∝ v² sobre el chasis + freno motor al soltar.
-2. La aceleración era demasiado rápida y lineal. → Modelo de potencia constante: fuerza disponible = min(F_max, P/v), con potencia/fuerza moderadas en el spec.
-3. Los retrovisores flotaban y no se veía carrocería en primera persona. → Cabina visible: pilares A/B, marco, techo, línea de ventanillas y soportes de espejos — sin invadir la vista útil.
-4. (2ª ronda) El espejo izquierdo quedaba medio tapado por la carrocería, el derecho estaba en el capó en vez de en la puerta, faltaba efecto cristal y se quería ver el propio coche en los laterales. → Espejos de puerta a y=0.93 (sobre la línea de ventanilla), FOV de cámara a 80° para que el derecho entre en pantalla en su sitio real, cámaras de espejo con yaw ±0.15 (franja del propio coche visible), y cristales translúcidos (parabrisas/ventanillas/luneta, opacity 0.16 tintado azul).
-5. (Detectado en verificación) El coche guiñaba al frenar fuerte (eje trasero bloqueado). → Reparto de frenada 100/60 delante/detrás y maxBrakeForce 60→45. Queda una deriva leve residual al frenar a fondo.
+1. When releasing the throttle the car did not decelerate naturally (no drag or engine braking). → Aerodynamic drag ∝ v² on the chassis + engine braking on release.
+2. Acceleration was too fast and linear. → Constant-power model: available force = min(F_max, P/v), with moderate power/force in the spec.
+3. The mirrors were floating and no bodywork was visible in first person. → Visible cabin: A/B pillars, frame, roof, window line and mirror mounts — without invading the useful view.
+4. (2nd round) The left mirror was half-covered by the bodywork, the right one was on the hood instead of on the door, the glass effect was missing, and we wanted to see our own car on the sides. → Door mirrors at y=0.93 (above the window line), camera FOV at 80° so the right one fits on screen in its real spot, mirror cameras with yaw ±0.15 (a sliver of our own car visible), and translucent glass (windshield/windows/rear window, opacity 0.16 blue-tinted).
+5. (Detected during verification) The car yawed under hard braking (locked rear axle). → 100/60 front/rear brake split and maxBrakeForce 60→45. A slight residual drift remains under full braking.
 
-## Comandos y entorno
+## Commands and environment
 
-- Node se gestiona con **nvm.fish**; en shells no interactivas no está en PATH. Usar:
-  `export PATH="$HOME/.local/share/nvm/v24.15.0/bin:$PATH"` antes de npm/node.
+- Node is managed with **nvm.fish**; in non-interactive shells it is not on PATH. Use:
+  `export PATH="$HOME/.local/share/nvm/v24.15.0/bin:$PATH"` before npm/node.
 - `npm run dev` · `npm test` · `npm run build` (typecheck + bundle).
-- Verificación visual headless: no hay chromium-cli; usar `playwright-core` (instalado ad hoc en /tmp) con `executablePath: /usr/bin/google-chrome-stable` y flags `--no-sandbox --enable-unsafe-swiftshader --use-angle=swiftshader`; esperar ~7 s a que cargue el WASM de Rapier antes de capturar.
+- Headless visual verification: there is no chromium-cli; use `playwright-core` (installed ad hoc in /tmp) with `executablePath: /usr/bin/google-chrome-stable` and flags `--no-sandbox --enable-unsafe-swiftshader --use-angle=swiftshader`; wait ~7 s for the Rapier WASM to load before capturing.
 
 ## Deploy (GitHub Pages)
 
-- Misma convención que dnd-calculator: paquete `gh-pages` (no GitHub Actions). `base: '/driving-simulator/'` en vite.config.ts.
-- `npm run deploy` = `npm run build && gh-pages -d dist`: publica `dist/` en la rama `gh-pages`.
-- Remoto SSH `git@github.com:julianmenav/driving-simulator.git`. Pages sirve desde la rama `gh-pages`.
+- Same convention as dnd-calculator: `gh-pages` package (no GitHub Actions). `base: '/driving-simulator/'` in vite.config.ts.
+- `npm run deploy` = `npm run build && gh-pages -d dist`: publishes `dist/` to the `gh-pages` branch.
+- SSH remote `git@github.com:julianmenav/driving-simulator.git`. Pages serves from the `gh-pages` branch.
 - URL: https://julianmenav.github.io/driving-simulator/
-- TypeScript 6: `baseUrl` está deprecado — los `paths` del tsconfig usan rutas relativas.
+- TypeScript 6: `baseUrl` is deprecated — the tsconfig `paths` use relative paths.
 
-## Referencias
+## References
 
-- Ejemplo oficial vehicle controller: https://threejs.org/examples/physics_rapier_vehicle_controller.html
-- Ejemplo coche react-three-rapier: https://github.com/pmndrs/react-three-rapier/blob/main/demo/src/examples/car/CarExample.tsx
+- Official vehicle controller example: https://threejs.org/examples/physics_rapier_vehicle_controller.html
+- react-three-rapier car example: https://github.com/pmndrs/react-three-rapier/blob/main/demo/src/examples/car/CarExample.tsx
 - API: https://rapier.rs/javascript3d/classes/DynamicRayCastVehicleController.html
