@@ -5,9 +5,9 @@ import type { Gear } from '@domain/vehicle/Gear';
 const GEARS: Gear[] = ['R', 'N', 'D'];
 
 /**
- * Velocímetro + indicador de marcha. La velocidad llega a 60 Hz por el bus,
- * así que se escribe directamente en el DOM (ref) para no re-renderizar
- * React en cada tick; la marcha sí es estado porque cambia rara vez.
+ * Speedometer + gear indicator. Speed arrives at 60 Hz over the bus, so it
+ * is written straight to the DOM (ref) to avoid re-rendering React on every
+ * tick; the gear is state because it changes rarely.
  */
 export function Hud({ game }: { game: Game }) {
   const speedRef = useRef<HTMLSpanElement>(null);

@@ -4,27 +4,27 @@ import { useEffect, useRef } from 'react';
 import { PerspectiveCamera as ThreePerspectiveCamera, RepeatWrapping } from 'three';
 
 interface RearViewMirrorProps {
-  /** Posición en el espacio local del chasis. */
+  /** Position in chassis local space. */
   position: [number, number, number];
   width: number;
   height: number;
-  /** Giro del espejo hacia el conductor (rad sobre Y). */
+  /** Mirror tilt towards the driver (rad about Y). */
   tilt?: number;
-  /** Orientación de la cámara trasera (rad sobre Y; positivo mira al lado derecho). */
+  /** Rear camera orientation (rad about Y; positive looks to the right side). */
   cameraYaw?: number;
   fov?: number;
-  /** Desfase de frame para repartir el coste entre espejos. */
+  /** Frame offset to spread the cost across mirrors. */
   phase?: number;
 }
 
-/** Cada espejo se refresca un frame de cada N (mitad del framerate con N=2). */
+/** Each mirror refreshes one frame out of every N (half framerate with N=2). */
 const REFRESH_INTERVAL = 2;
 const FBO_WIDTH = 384;
 
 /**
- * Retrovisor: un plano con la escena renderizada desde una cámara que mira
- * hacia atrás (-z local del chasis), volcada a un render target de baja
- * resolución. La textura se invierte en X porque un espejo refleja.
+ * Rear-view mirror: a plane showing the scene rendered from a rear-facing
+ * camera (chassis local -z), drawn into a low-resolution render target. The
+ * texture is flipped in X because a mirror reflects.
  */
 export function RearViewMirror({
   position,
@@ -63,13 +63,13 @@ export function RearViewMirror({
           <boxGeometry args={[width + 0.05, height + 0.05, 0.025]} />
           <meshStandardMaterial color="#101216" />
         </mesh>
-        {/* El plano mira a +z tras rotar π: hacia el conductor */}
+        {/* The plane faces +z after rotating π: towards the driver */}
         <mesh position-z={-0.015} rotation-y={Math.PI}>
           <planeGeometry args={[width, height]} />
           <meshBasicMaterial map={fbo.texture} toneMapped={false} />
         </mesh>
       </group>
-      {/* Cámara trasera: por defecto mira a -z, la zaga del coche */}
+      {/* Rear camera: by default looks at -z, the back of the car */}
       <perspectiveCamera
         ref={cameraRef}
         fov={fov}

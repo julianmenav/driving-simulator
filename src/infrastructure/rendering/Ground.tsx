@@ -3,7 +3,7 @@ import { CuboidCollider, RigidBody } from '@react-three/rapier';
 const ROAD_LENGTH = 400;
 const DASH_COUNT = 40;
 
-/** Suelo estático con una carretera recta a lo largo de +z como zona de pruebas. */
+/** Static ground with a straight road along +z as a test area. */
 export function Ground() {
   return (
     <>
@@ -15,13 +15,13 @@ export function Ground() {
         </mesh>
       </RigidBody>
 
-      {/* Asfalto (solo visual; el collider es el suelo) */}
+      {/* Asphalt (visual only; the collider is the ground) */}
       <mesh receiveShadow position={[0, 0.01, 0]}>
         <boxGeometry args={[8, 0.02, ROAD_LENGTH]} />
         <meshStandardMaterial color="#3a3d42" />
       </mesh>
 
-      {/* Línea central discontinua */}
+      {/* Dashed center line */}
       {Array.from({ length: DASH_COUNT }, (_, i) => (
         <mesh key={i} position={[0, 0.03, -ROAD_LENGTH / 2 + (i + 0.5) * (ROAD_LENGTH / DASH_COUNT)]}>
           <boxGeometry args={[0.15, 0.02, 2]} />
@@ -48,7 +48,7 @@ const CRATE_POSITIONS: [number, number][] = [
   [7, 60],
 ];
 
-/** Conos y cajas dinámicos para tener referencias de movimiento y algo que empujar. */
+/** Dynamic cones and crates for motion references and something to push around. */
 export function Obstacles() {
   return (
     <>

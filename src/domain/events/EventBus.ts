@@ -5,11 +5,11 @@ type WildcardHandler<Events> = <K extends keyof Events>(type: K, payload: Events
 type ErrorReporter = (error: unknown, eventType: PropertyKey) => void;
 
 /**
- * Bus de eventos de dominio, tipado sobre un mapa nombre → payload.
+ * Domain event bus, typed over a name → payload map.
  *
- * Un handler que lanza una excepción no interrumpe al resto de suscriptores:
- * el game loop publica eventos cada tick y no puede depender de que todos
- * los suscriptores sean correctos.
+ * A handler that throws does not interrupt the remaining subscribers: the
+ * game loop publishes events every tick and cannot depend on every
+ * subscriber being well behaved.
  */
 export class EventBus<Events extends Record<keyof Events, unknown>> {
   private readonly handlers = new Map<keyof Events, Set<Handler<unknown>>>();
@@ -17,7 +17,7 @@ export class EventBus<Events extends Record<keyof Events, unknown>> {
 
   constructor(
     private readonly reportError: ErrorReporter = (error, eventType) => {
-      console.error(`Error en un handler del evento "${String(eventType)}"`, error);
+      console.error(`Error in a handler for event "${String(eventType)}"`, error);
     },
   ) {}
 
@@ -33,7 +33,7 @@ export class EventBus<Events extends Record<keyof Events, unknown>> {
     };
   }
 
-  /** Se suscribe a todos los eventos; recibe también el tipo. */
+  /** Subscribes to every event; the handler also receives the type. */
   subscribeAll(handler: WildcardHandler<Events>): Unsubscribe {
     this.wildcardHandlers.add(handler);
     return () => {
@@ -41,7 +41,7 @@ export class EventBus<Events extends Record<keyof Events, unknown>> {
     };
   }
 
-  /** Como subscribe, pero el handler se ejecuta una sola vez. */
+  /** Like subscribe, but the handler runs only once. */
   once<K extends keyof Events>(type: K, handler: Handler<Events[K]>): Unsubscribe {
     const unsubscribe = this.subscribe(type, (payload) => {
       unsubscribe();
@@ -53,7 +53,7 @@ export class EventBus<Events extends Record<keyof Events, unknown>> {
   publish<K extends keyof Events>(type: K, payload: Events[K]): void {
     const set = this.handlers.get(type);
     if (set) {
-      // Copia: un handler puede (des)suscribir durante la publicación.
+      // Copy: a handler may (un)subscribe during publication.
       for (const handler of [...set]) {
         try {
           handler(payload);
@@ -71,7 +71,7 @@ export class EventBus<Events extends Record<keyof Events, unknown>> {
     }
   }
 
-  /** Elimina todas las suscripciones (cambio de modo, teardown de tests…). */
+  /** Removes every subscription (game-mode change, test teardown...). */
   clear(): void {
     this.handlers.clear();
     this.wildcardHandlers.clear();

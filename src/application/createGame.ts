@@ -15,8 +15,8 @@ export interface GameDependencies {
 }
 
 /**
- * Raíz de composición del juego: recibe los adaptadores (creados en main)
- * ya como puertos. Aquí se irán cableando físicas, persistencia, etc.
+ * Game composition root: receives the adapters (created in main) already
+ * as ports. Physics, persistence, etc. will be wired here over time.
  */
 export function createGame({ controls }: GameDependencies): Game {
   const events: GameEventBus = new EventBus<GameEvents>();

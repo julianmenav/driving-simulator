@@ -33,12 +33,12 @@ const createAttached = () => {
 };
 
 describe('KeyboardControlsAdapter', () => {
-  it('sin teclas pulsadas todo está en reposo', () => {
+  it('with no keys pressed everything is at rest', () => {
     const { adapter } = createAttached();
     expect(adapter.read()).toEqual({ throttle: 0, brake: 0, steering: 0 });
   });
 
-  it('W acelera y al soltar vuelve a 0', () => {
+  it('W accelerates and returns to 0 on release', () => {
     const { source, adapter } = createAttached();
 
     source.emit('keydown', 'KeyW');
@@ -48,7 +48,7 @@ describe('KeyboardControlsAdapter', () => {
     expect(adapter.read().throttle).toBe(0);
   });
 
-  it('las flechas son equivalentes a WASD', () => {
+  it('arrow keys are equivalent to WASD', () => {
     const { source, adapter } = createAttached();
 
     source.emit('keydown', 'ArrowUp');
@@ -57,7 +57,7 @@ describe('KeyboardControlsAdapter', () => {
     expect(adapter.read()).toEqual({ throttle: 1, brake: 0, steering: 1 });
   });
 
-  it('izquierda y derecha a la vez se anulan', () => {
+  it('left and right at once cancel out', () => {
     const { source, adapter } = createAttached();
 
     source.emit('keydown', 'KeyA');
@@ -66,7 +66,7 @@ describe('KeyboardControlsAdapter', () => {
     expect(adapter.read().steering).toBe(0);
   });
 
-  it('al perder el foco se sueltan todas las teclas', () => {
+  it('losing focus releases every key', () => {
     const { source, adapter } = createAttached();
 
     source.emit('keydown', 'KeyW');
@@ -76,7 +76,7 @@ describe('KeyboardControlsAdapter', () => {
     expect(adapter.read()).toEqual({ throttle: 0, brake: 0, steering: 0 });
   });
 
-  it('E y Q encolan cambios de marcha y la cola se vacía al consumirla', () => {
+  it('E and Q queue gear shifts and the queue clears when consumed', () => {
     const { source, adapter } = createAttached();
 
     source.emit('keydown', 'KeyE');
@@ -86,7 +86,7 @@ describe('KeyboardControlsAdapter', () => {
     expect(adapter.consumeShiftRequests()).toEqual([]);
   });
 
-  it('ignora los autorepeat de E/Q al mantener la tecla', () => {
+  it('ignores E/Q autorepeat while the key is held', () => {
     const { source, adapter } = createAttached();
 
     source.emit('keydown', 'KeyE');
@@ -96,7 +96,7 @@ describe('KeyboardControlsAdapter', () => {
     expect(adapter.consumeShiftRequests()).toEqual(['up']);
   });
 
-  it('al perder el foco también se descarta la cola de cambios', () => {
+  it('losing focus also discards the shift queue', () => {
     const { source, adapter } = createAttached();
 
     source.emit('keydown', 'KeyE');
@@ -105,7 +105,7 @@ describe('KeyboardControlsAdapter', () => {
     expect(adapter.consumeShiftRequests()).toEqual([]);
   });
 
-  it('tras detach deja de escuchar', () => {
+  it('stops listening after detach', () => {
     const { source, adapter } = createAttached();
 
     adapter.detach();

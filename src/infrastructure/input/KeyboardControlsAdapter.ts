@@ -8,7 +8,7 @@ const RIGHT_KEYS = ['KeyD', 'ArrowRight'];
 const SHIFT_UP_KEY = 'KeyE';
 const SHIFT_DOWN_KEY = 'KeyQ';
 
-/** Códigos cuyo comportamiento por defecto (scroll) hay que anular. */
+/** Codes whose default behavior (scrolling) must be prevented. */
 const CAPTURED_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
 
 type KeyListener = (event: KeyboardEvent) => void;
@@ -36,7 +36,7 @@ export class KeyboardControlsAdapter implements ControlsPort {
     this.pressed.delete(event.code);
   };
 
-  /** Al perder el foco no llegan los keyup: soltarlo todo. */
+  /** Keyup events never arrive after losing focus: release everything. */
   private readonly onBlur: KeyListener = () => {
     this.pressed.clear();
     this.shiftRequests = [];

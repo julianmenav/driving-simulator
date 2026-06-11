@@ -1,2 +1,2 @@
-/** Posiciones de la caja de cambios automática. */
+/** Automatic gearbox lever positions. */
 export type Gear = 'D' | 'N' | 'R';

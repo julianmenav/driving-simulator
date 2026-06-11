@@ -5,23 +5,23 @@ import type { VehicleSpec } from './VehicleSpec';
 export type ShiftDirection = 'up' | 'down';
 
 export interface DriveCommand {
-  /** Fuerza de motor en N; el signo lo decide la marcha. */
+  /** Engine force in N; the gear decides the sign. */
   engineForce: number;
-  /** Freno por rueda. */
+  /** Brake force per wheel. */
   brakeForce: number;
 }
 
-/** Orden de la palanca: 'up' avanza hacia D, 'down' hacia R. */
+/** Lever order: 'up' moves towards D, 'down' towards R. */
 const GEAR_ORDER: Gear[] = ['R', 'N', 'D'];
 
-/** Velocidad máxima (km/h) a la que se permite engranar en sentido contrario. */
+/** Maximum speed (km/h) at which engaging against the direction of travel is allowed. */
 const ENGAGE_MAX_SPEED_KMH = 6;
 
 /**
- * Caja de cambios automática con selector D/N/R. Es quien decide qué hace
- * el acelerador según la marcha: en D empuja hacia delante, en R hacia
- * atrás (con menos fuerza), en N el motor no tracciona. El freno siempre
- * frena. Publica vehicle/gearChanged al engranar.
+ * Automatic gearbox with a D/N/R selector. It decides what the throttle
+ * does for each gear: D pushes forward, R pushes backward (with reduced
+ * force), N provides no traction. The brake always brakes. Publishes
+ * vehicle/gearChanged when a gear engages.
  */
 export class AutomaticGearbox {
   private current: Gear = 'N';
@@ -35,7 +35,7 @@ export class AutomaticGearbox {
     return this.current;
   }
 
-  /** Intenta mover la palanca; devuelve si la marcha llegó a engranar. */
+  /** Tries to move the lever; returns whether the gear actually engaged. */
   shift(direction: ShiftDirection, speedKmh: number): boolean {
     const index = GEAR_ORDER.indexOf(this.current) + (direction === 'up' ? 1 : -1);
     const target = GEAR_ORDER[index];
@@ -48,7 +48,7 @@ export class AutomaticGearbox {
   }
 
   computeDrive(input: { throttle: number; brake: number }, speedKmh: number): DriveCommand {
-    // Potencia constante: a más velocidad, menos fuerza disponible.
+    // Constant power: the faster you go, the less force is available.
     const speedMs = Math.max(Math.abs(speedKmh) / 3.6, 1);
     const availableForce = Math.min(this.spec.maxEngineForce, this.spec.maxPowerWatts / speedMs);
 

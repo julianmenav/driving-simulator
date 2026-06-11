@@ -1,23 +1,23 @@
 import type { ShiftDirection } from '@domain/vehicle/Gearbox';
 
 export interface ControlsState {
-  /** Acelerador, 0..1. */
+  /** Throttle, 0..1. */
   throttle: number;
-  /** Freno, 0..1. */
+  /** Brake, 0..1. */
   brake: number;
-  /** Dirección, -1..1; positivo = izquierda. */
+  /** Steering, -1..1; positive = left. */
   steering: number;
 }
 
 /**
- * Puerto de entrada de conducción. Hoy lo implementa el teclado;
- * mañana puede implementarlo un gamepad o un volante.
+ * Driving input port. Today a keyboard implements it; tomorrow it could be
+ * a gamepad or a steering wheel.
  */
 export interface ControlsPort {
   read(): ControlsState;
   /**
-   * Devuelve y vacía la cola de peticiones de cambio de marcha acumuladas
-   * desde la última llamada (pulsaciones, no estado mantenido).
+   * Returns and clears the queue of gear shift requests accumulated since
+   * the last call (key presses, not held state).
    */
   consumeShiftRequests(): ShiftDirection[];
 }

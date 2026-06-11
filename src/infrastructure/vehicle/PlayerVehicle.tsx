@@ -15,17 +15,17 @@ import { DEFAULT_VEHICLE_SPEC as spec } from '@domain/vehicle/VehicleSpec';
 import { RearViewMirror } from '@infrastructure/rendering/RearViewMirror';
 
 const WHEEL_DIRECTION = { x: 0, y: -1, z: 0 };
-// Con el eje de rueda en -x, fuerza de motor positiva empuja hacia +z (frente).
+// With the wheel axle along -x, positive engine force pushes towards +z (front).
 const WHEEL_AXLE = { x: -1, y: 0, z: 0 };
 const FRONT_WHEELS = [0, 1];
 const REAR_WHEELS = [2, 3];
 const WHEEL_WIDTH = 0.26;
 
 /**
- * Vehículo del jugador: chasis dinámico + DynamicRayCastVehicleController de
- * Rapier, con la cámara en primera persona montada en el asiento del
- * conductor (a la izquierda). Lee el ControlsPort en cada paso de físicas y
- * publica el estado del vehículo en el bus de eventos.
+ * Player vehicle: dynamic chassis + Rapier DynamicRayCastVehicleController,
+ * with the first-person camera mounted at the driver seat (left side). It
+ * reads the ControlsPort on every physics step and publishes the vehicle
+ * state on the event bus.
  */
 export function PlayerVehicle({ game }: { game: Game }) {
   const { world } = useRapier();
@@ -60,10 +60,10 @@ export function PlayerVehicle({ game }: { game: Game }) {
 
     const { throttle, brake, steering } = game.controls.read();
     const dt = world.timestep;
-    const speed = controller.currentVehicleSpeed(); // m/s, positivo hacia delante
+    const speed = controller.currentVehicleSpeed(); // m/s, positive forward
     const speedKmh = speed * 3.6;
 
-    // Volante suavizado y menos sensible a alta velocidad.
+    // Smoothed steering, less sensitive at high speed.
     const speedFactor = 1 / (1 + Math.abs(speed) * 0.06);
     const targetSteering = steering * spec.maxSteeringAngle * speedFactor;
     steeringRef.current += (targetSteering - steeringRef.current) * Math.min(1, spec.steeringSpeed * dt);
@@ -72,13 +72,13 @@ export function PlayerVehicle({ game }: { game: Game }) {
     const { engineForce, brakeForce } = game.gearbox.computeDrive({ throttle, brake }, speedKmh);
 
     FRONT_WHEELS.forEach((i) => controller.setWheelSteering(i, steeringRef.current));
-    // La fuerza de motor total se reparte entre las ruedas motrices.
+    // The total engine force is split across the driven wheels.
     REAR_WHEELS.forEach((i) => controller.setWheelEngineForce(i, engineForce / REAR_WHEELS.length));
-    // Reparto de frenada 100/60: el eje trasero bloqueado hace guiñar el coche.
+    // 100/60 brake split: a locked rear axle makes the car yaw.
     FRONT_WHEELS.forEach((i) => controller.setWheelBrake(i, brakeForce));
     REAR_WHEELS.forEach((i) => controller.setWheelBrake(i, brakeForce * 0.6));
 
-    // Resistencia aerodinámica: F = -coef · |v| · v
+    // Aerodynamic drag: F = -coef · |v| · v
     const chassis = chassisRef.current;
     if (chassis) {
       const velocity = chassis.linvel();
@@ -94,7 +94,7 @@ export function PlayerVehicle({ game }: { game: Game }) {
     game.events.publish('vehicle/stateUpdated', { speedKmh });
   });
 
-  // Coloca las ruedas visuales según suspensión, giro y rodadura.
+  // Places the visual wheels according to suspension travel, steering and rolling.
   useFrame(() => {
     const controller = controllerRef.current;
     if (!controller) return;
@@ -115,23 +115,23 @@ export function PlayerVehicle({ game }: { game: Game }) {
     <RigidBody ref={chassisRef} type="dynamic" colliders={false} position={[0, 1.1, 0]} canSleep={false}>
       <CuboidCollider args={[hx, hy, hz]} mass={spec.chassisMass} />
 
-      {/* Carrocería */}
+      {/* Body */}
       <mesh castShadow>
         <boxGeometry args={[hx * 2, hy * 2, hz * 2]} />
         <meshStandardMaterial color="#a33434" />
       </mesh>
-      {/* Capó, visible desde el asiento */}
+      {/* Hood, visible from the driver seat */}
       <mesh castShadow position={[0, 0.43, 1.45]}>
         <boxGeometry args={[hx * 2 - 0.1, 0.16, 1.2]} />
         <meshStandardMaterial color="#8f2b2b" />
       </mesh>
-      {/* Salpicadero */}
+      {/* Dashboard */}
       <mesh position={[0, 0.58, 0.78]}>
         <boxGeometry args={[hx * 2 - 0.2, 0.22, 0.45]} />
         <meshStandardMaterial color="#1d1f24" />
       </mesh>
 
-      {/* Cabina: pilares A, marco del parabrisas, techo, pilares B y ventanillas */}
+      {/* Cabin: A pillars, windshield frame, roof, B pillars and window line */}
       <mesh castShadow position={[0.78, 1.03, 0.85]} rotation-x={-0.35}>
         <boxGeometry args={[0.06, 0.85, 0.06]} />
         <meshStandardMaterial color="#1f2227" />
@@ -165,7 +165,7 @@ export function PlayerVehicle({ game }: { game: Game }) {
         <meshStandardMaterial color="#1f2227" />
       </mesh>
 
-      {/* Cristales: parabrisas, ventanillas y luneta */}
+      {/* Glass: windshield, side windows and rear window */}
       <mesh position={[0, 1.03, 0.85]} rotation-x={-0.35}>
         <planeGeometry args={[1.56, 0.85]} />
         <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
@@ -183,7 +183,7 @@ export function PlayerVehicle({ game }: { game: Game }) {
         <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
       </mesh>
 
-      {/* Soportes de los retrovisores: vástago central y brazos de puerta */}
+      {/* Mirror mounts: center stalk and door arms */}
       <mesh position={[0, 1.25, 0.72]}>
         <boxGeometry args={[0.03, 0.1, 0.03]} />
         <meshStandardMaterial color="#101216" />
@@ -197,7 +197,7 @@ export function PlayerVehicle({ game }: { game: Game }) {
         <meshStandardMaterial color="#101216" />
       </mesh>
 
-      {/* Ruedas */}
+      {/* Wheels */}
       {spec.wheelPositions.map((position, i) => (
         <group
           key={i}
@@ -213,12 +213,12 @@ export function PlayerVehicle({ game }: { game: Game }) {
         </group>
       ))}
 
-      {/* Retrovisores: interior y de puerta (por encima de la línea de ventanilla) */}
+      {/* Rear-view mirrors: interior and door mirrors (above the window line) */}
       <RearViewMirror position={[0, 1.16, 0.72]} width={0.3} height={0.09} fov={20} />
       <RearViewMirror position={[0.97, 0.93, 0.9]} width={0.22} height={0.13} tilt={0.3} cameraYaw={-0.15} fov={38} phase={1} />
       <RearViewMirror position={[-0.97, 0.93, 1.15]} width={0.22} height={0.13} tilt={-0.3} cameraYaw={0.15} fov={38} phase={1} />
 
-      {/* Asiento del conductor (izquierda); mirando hacia +z */}
+      {/* Driver seat (left side); looking towards +z */}
       <PerspectiveCamera makeDefault fov={80} near={0.1} far={500} position={[0.3, 0.95, 0.15]} rotation={[0, Math.PI, 0]} />
     </RigidBody>
   );

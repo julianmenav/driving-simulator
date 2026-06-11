@@ -1,42 +1,43 @@
 /**
- * Parámetros físicos y de conducción del vehículo. Vive en dominio: es la
- * definición del coche, no del motor de físicas. La infraestructura (Rapier)
- * la consume para configurar el raycast vehicle controller.
+ * Physical and driving parameters of the vehicle. It lives in the domain:
+ * it is the definition of the car, not of the physics engine. The
+ * infrastructure (Rapier) consumes it to configure the raycast vehicle
+ * controller.
  *
- * Convención de ejes (espacio local del chasis): +z = frente del coche,
- * +y = arriba, +x = izquierda del conductor.
+ * Axis convention (chassis local space): +z = front of the car,
+ * +y = up, +x = driver's left.
  */
 export interface VehicleSpec {
-  /** Semiejes del chasis (collider), en metros. */
+  /** Chassis (collider) half extents, in meters. */
   chassisHalfExtents: [number, number, number];
-  /** Masa del chasis en kg. */
+  /** Chassis mass in kg. */
   chassisMass: number;
   wheelRadius: number;
-  /** Puntos de anclaje de la suspensión en espacio local: FL, FR, RL, RR. */
+  /** Suspension anchor points in local space: FL, FR, RL, RR. */
   wheelPositions: [number, number, number][];
   suspensionRestLength: number;
   suspensionStiffness: number;
   suspensionCompression: number;
   suspensionRelaxation: number;
-  /** Fuerza máxima de motor en N (tracción trasera), disponible a baja velocidad. */
+  /** Maximum engine force in N (rear-wheel drive), available at low speed. */
   maxEngineForce: number;
   /**
-   * Potencia máxima del motor en W. A velocidad v la fuerza disponible es
-   * min(maxEngineForce, maxPowerWatts / v): curva de aceleración realista
-   * que decae con la velocidad.
+   * Maximum engine power in W. At speed v the available force is
+   * min(maxEngineForce, maxPowerWatts / v): a realistic acceleration curve
+   * that decays with speed.
    */
   maxPowerWatts: number;
-  /** Freno por rueda (escala empírica del raycast vehicle de Rapier/Bullet). */
+  /** Brake per wheel (empirical scale of the Rapier/Bullet raycast vehicle). */
   maxBrakeForce: number;
-  /** Freno motor + rodadura aplicado al soltar el acelerador (escala de freno). */
+  /** Engine braking + rolling resistance applied when the throttle is released (brake scale). */
   engineBrakeForce: number;
-  /** Resistencia aerodinámica: F = -coef · |v| · v sobre el chasis (N·s²/m²). */
+  /** Aerodynamic drag: F = -coef · |v| · v on the chassis (N·s²/m²). */
   aeroDragCoefficient: number;
-  /** Fracción de la fuerza de motor disponible marcha atrás. */
+  /** Fraction of the engine force available in reverse. */
   reverseForceRatio: number;
-  /** Giro máximo de las ruedas delanteras en radianes (a baja velocidad). */
+  /** Maximum front wheel steering angle in radians (at low speed). */
   maxSteeringAngle: number;
-  /** Velocidad de respuesta del volante (1/s, para el suavizado). */
+  /** Steering response speed (1/s, for the smoothing). */
   steeringSpeed: number;
 }
 

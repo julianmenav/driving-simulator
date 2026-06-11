@@ -10,7 +10,7 @@ const createBus = (reportError?: (error: unknown, eventType: PropertyKey) => voi
   new EventBus<TestEvents>(reportError);
 
 describe('EventBus', () => {
-  it('entrega el payload a los suscriptores del tipo publicado', () => {
+  it('delivers the payload to subscribers of the published type', () => {
     const bus = createBus();
     const handler = vi.fn();
 
@@ -20,17 +20,17 @@ describe('EventBus', () => {
     expect(handler).toHaveBeenCalledExactlyOnceWith({ value: 42 });
   });
 
-  it('no entrega eventos de otros tipos', () => {
+  it('does not deliver events of other types', () => {
     const bus = createBus();
     const handler = vi.fn();
 
     bus.subscribe('test/ping', handler);
-    bus.publish('test/pong', { label: 'hola' });
+    bus.publish('test/pong', { label: 'hi' });
 
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('soporta varios suscriptores para el mismo tipo', () => {
+  it('supports multiple subscribers for the same type', () => {
     const bus = createBus();
     const first = vi.fn();
     const second = vi.fn();
@@ -43,7 +43,7 @@ describe('EventBus', () => {
     expect(second).toHaveBeenCalledOnce();
   });
 
-  it('deja de entregar tras cancelar la suscripción', () => {
+  it('stops delivering after unsubscribing', () => {
     const bus = createBus();
     const handler = vi.fn();
 
@@ -54,19 +54,19 @@ describe('EventBus', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('subscribeAll recibe todos los eventos con su tipo', () => {
+  it('subscribeAll receives every event with its type', () => {
     const bus = createBus();
     const handler = vi.fn();
 
     bus.subscribeAll(handler);
     bus.publish('test/ping', { value: 1 });
-    bus.publish('test/pong', { label: 'hola' });
+    bus.publish('test/pong', { label: 'hi' });
 
     expect(handler).toHaveBeenNthCalledWith(1, 'test/ping', { value: 1 });
-    expect(handler).toHaveBeenNthCalledWith(2, 'test/pong', { label: 'hola' });
+    expect(handler).toHaveBeenNthCalledWith(2, 'test/pong', { label: 'hi' });
   });
 
-  it('once se ejecuta una sola vez', () => {
+  it('once runs only a single time', () => {
     const bus = createBus();
     const handler = vi.fn();
 
@@ -77,7 +77,7 @@ describe('EventBus', () => {
     expect(handler).toHaveBeenCalledExactlyOnceWith({ value: 1 });
   });
 
-  it('un handler que lanza no interrumpe al resto y se reporta el error', () => {
+  it('a throwing handler does not interrupt the rest and the error is reported', () => {
     const reportError = vi.fn();
     const bus = createBus(reportError);
     const boom = new Error('boom');
@@ -93,7 +93,7 @@ describe('EventBus', () => {
     expect(reportError).toHaveBeenCalledExactlyOnceWith(boom, 'test/ping');
   });
 
-  it('un handler puede desuscribirse a sí mismo durante la publicación sin afectar al resto', () => {
+  it('a handler can unsubscribe itself during publication without affecting the rest', () => {
     const bus = createBus();
     const second = vi.fn();
 
@@ -104,7 +104,7 @@ describe('EventBus', () => {
     expect(second).toHaveBeenCalledOnce();
   });
 
-  it('clear elimina todas las suscripciones', () => {
+  it('clear removes every subscription', () => {
     const bus = createBus();
     const handler = vi.fn();
     const wildcard = vi.fn();

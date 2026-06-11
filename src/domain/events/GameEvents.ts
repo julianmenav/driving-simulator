@@ -4,11 +4,11 @@ import type { EventBus } from './EventBus';
 export type GameMode = 'practice' | 'exam';
 
 /**
- * Mapa nombre → payload de todos los eventos del juego.
+ * Name → payload map of every game event.
  *
- * Es el contrato central del diseño: las features futuras (infracciones,
- * NPCs, modos de juego) se integran añadiendo entradas aquí y suscriptores
- * en application, sin tocar a los emisores existentes.
+ * This is the central contract of the design: future features
+ * (infractions, NPCs, game modes) integrate by adding entries here and
+ * subscribers in application, without touching existing publishers.
  */
 export interface GameEvents {
   'game/started': { mode: GameMode };
