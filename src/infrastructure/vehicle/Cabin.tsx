@@ -162,17 +162,19 @@ export function Cabin({ game, steeringRef }: CabinProps) {
         <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
       </mesh>
 
-      {/* Mirror mounts: center stalk and door arms */}
+      {/* Mirror mounts: center stalk (hangs from above) and door arms. The
+          door arms sit just below the mirror glass so they connect to the door
+          without crossing the reflective surface. */}
       <mesh position={[0, 1.25, 0.72]}>
         <boxGeometry args={[0.03, 0.1, 0.03]} />
         <meshStandardMaterial color="#101216" />
       </mesh>
-      <mesh position={[0.9, 0.93, 0.9]}>
-        <boxGeometry args={[0.14, 0.035, 0.035]} />
+      <mesh position={[0.92, 0.83, 0.9]}>
+        <boxGeometry args={[0.16, 0.04, 0.05]} />
         <meshStandardMaterial color="#101216" />
       </mesh>
-      <mesh position={[-0.9, 0.93, 1.15]}>
-        <boxGeometry args={[0.14, 0.035, 0.035]} />
+      <mesh position={[-0.92, 0.83, 1.15]}>
+        <boxGeometry args={[0.16, 0.04, 0.05]} />
         <meshStandardMaterial color="#101216" />
       </mesh>
     </group>
