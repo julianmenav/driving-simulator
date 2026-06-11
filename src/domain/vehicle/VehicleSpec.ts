@@ -18,10 +18,20 @@ export interface VehicleSpec {
   suspensionStiffness: number;
   suspensionCompression: number;
   suspensionRelaxation: number;
-  /** Fuerza máxima de motor en N (tracción trasera). */
+  /** Fuerza máxima de motor en N (tracción trasera), disponible a baja velocidad. */
   maxEngineForce: number;
+  /**
+   * Potencia máxima del motor en W. A velocidad v la fuerza disponible es
+   * min(maxEngineForce, maxPowerWatts / v): curva de aceleración realista
+   * que decae con la velocidad.
+   */
+  maxPowerWatts: number;
   /** Freno por rueda (escala empírica del raycast vehicle de Rapier/Bullet). */
   maxBrakeForce: number;
+  /** Freno motor + rodadura aplicado al soltar el acelerador (escala de freno). */
+  engineBrakeForce: number;
+  /** Resistencia aerodinámica: F = -coef · |v| · v sobre el chasis (N·s²/m²). */
+  aeroDragCoefficient: number;
   /** Fracción de la fuerza de motor disponible marcha atrás. */
   reverseForceRatio: number;
   /** Giro máximo de las ruedas delanteras en radianes (a baja velocidad). */
@@ -44,8 +54,11 @@ export const DEFAULT_VEHICLE_SPEC: VehicleSpec = {
   suspensionStiffness: 24,
   suspensionCompression: 4.4,
   suspensionRelaxation: 2.3,
-  maxEngineForce: 3000,
+  maxEngineForce: 2400,
+  maxPowerWatts: 50_000,
   maxBrakeForce: 60,
+  engineBrakeForce: 3,
+  aeroDragCoefficient: 0.45,
   reverseForceRatio: 0.5,
   maxSteeringAngle: 0.5,
   steeringSpeed: 6,

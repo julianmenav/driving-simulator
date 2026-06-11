@@ -71,7 +71,13 @@ Orden de implementación de fase 1 (cada paso da resultado visible):
 - ✅ Paso 4 completado (jun 2026): HUD con velocímetro y marcha (`src/ui/Hud.tsx`). La velocidad (60 Hz por el bus) se escribe directa al DOM vía ref; la marcha usa estado React.
 - ✅ Paso 5 completado (jun 2026): retrovisores (`RearViewMirror`): plano + cámara trasera (-z local) + `useFBO` 384px, textura invertida en X, refresco 1 de cada 2 frames con desfase entre espejos. Central + laterales montados en `PlayerVehicle`.
 - **FASE 1 COMPLETA.** Siguiente: features futuras — sugerido empezar por mapas data-driven (GLTF + manifest) o sistema de infracciones sobre el bus.
-- Pulido pendiente: tuning de conducción (acelera 0→80 en ~3 s, quizá demasiado), salpicadero grande en pantalla, espejos flotan (no hay parabrisas/pilares visibles).
+- Pulido pendiente: salpicadero grande en pantalla.
+
+## Feedback de jugabilidad de Julián (jun 2026)
+
+1. Al soltar el acelerador el coche no decelera de forma natural (sin drag ni freno motor). → Resistencia aerodinámica ∝ v² sobre el chasis + freno motor al soltar.
+2. La aceleración era demasiado rápida y lineal. → Modelo de potencia constante: fuerza disponible = min(F_max, P/v), con potencia/fuerza moderadas en el spec.
+3. Los retrovisores flotaban y no se veía carrocería en primera persona. → Cabina visible: pilares A/B, marco, techo, línea de ventanillas y soportes de espejos — sin invadir la vista útil.
 
 ## Comandos y entorno
 

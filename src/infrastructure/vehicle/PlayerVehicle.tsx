@@ -72,8 +72,21 @@ export function PlayerVehicle({ game }: { game: Game }) {
     const { engineForce, brakeForce } = game.gearbox.computeDrive({ throttle, brake }, speedKmh);
 
     FRONT_WHEELS.forEach((i) => controller.setWheelSteering(i, steeringRef.current));
-    REAR_WHEELS.forEach((i) => controller.setWheelEngineForce(i, engineForce));
+    // La fuerza de motor total se reparte entre las ruedas motrices.
+    REAR_WHEELS.forEach((i) => controller.setWheelEngineForce(i, engineForce / REAR_WHEELS.length));
     [...FRONT_WHEELS, ...REAR_WHEELS].forEach((i) => controller.setWheelBrake(i, brakeForce));
+
+    // Resistencia aerodinámica: F = -coef · |v| · v
+    const chassis = chassisRef.current;
+    if (chassis) {
+      const velocity = chassis.linvel();
+      const magnitude = Math.hypot(velocity.x, velocity.y, velocity.z);
+      if (magnitude > 0.5) {
+        const k = spec.aeroDragCoefficient * magnitude * dt;
+        chassis.applyImpulse({ x: -k * velocity.x, y: -k * velocity.y, z: -k * velocity.z }, true);
+      }
+    }
+
     controller.updateVehicle(dt);
 
     game.events.publish('vehicle/stateUpdated', { speedKmh });
@@ -116,6 +129,54 @@ export function PlayerVehicle({ game }: { game: Game }) {
         <meshStandardMaterial color="#1d1f24" />
       </mesh>
 
+      {/* Cabina: pilares A, marco del parabrisas, techo, pilares B y ventanillas */}
+      <mesh castShadow position={[0.78, 1.0, 0.85]} rotation-x={-0.35}>
+        <boxGeometry args={[0.06, 0.8, 0.06]} />
+        <meshStandardMaterial color="#1f2227" />
+      </mesh>
+      <mesh castShadow position={[-0.78, 1.0, 0.85]} rotation-x={-0.35}>
+        <boxGeometry args={[0.06, 0.8, 0.06]} />
+        <meshStandardMaterial color="#1f2227" />
+      </mesh>
+      <mesh castShadow position={[0, 1.3, 0.72]}>
+        <boxGeometry args={[1.64, 0.1, 0.1]} />
+        <meshStandardMaterial color="#1f2227" />
+      </mesh>
+      <mesh castShadow position={[0, 1.33, -0.12]}>
+        <boxGeometry args={[1.64, 0.07, 1.7]} />
+        <meshStandardMaterial color="#1f2227" />
+      </mesh>
+      <mesh castShadow position={[0.8, 1.0, -0.95]}>
+        <boxGeometry args={[0.08, 0.7, 0.08]} />
+        <meshStandardMaterial color="#1f2227" />
+      </mesh>
+      <mesh castShadow position={[-0.8, 1.0, -0.95]}>
+        <boxGeometry args={[0.08, 0.7, 0.08]} />
+        <meshStandardMaterial color="#1f2227" />
+      </mesh>
+      <mesh position={[0.85, 0.78, -0.05]}>
+        <boxGeometry args={[0.07, 0.12, 1.9]} />
+        <meshStandardMaterial color="#1f2227" />
+      </mesh>
+      <mesh position={[-0.85, 0.78, -0.05]}>
+        <boxGeometry args={[0.07, 0.12, 1.9]} />
+        <meshStandardMaterial color="#1f2227" />
+      </mesh>
+
+      {/* Soportes de los retrovisores */}
+      <mesh position={[0, 1.25, 0.78]}>
+        <boxGeometry args={[0.03, 0.1, 0.03]} />
+        <meshStandardMaterial color="#101216" />
+      </mesh>
+      <mesh position={[0.9, 0.85, 0.88]}>
+        <boxGeometry args={[0.14, 0.035, 0.035]} />
+        <meshStandardMaterial color="#101216" />
+      </mesh>
+      <mesh position={[-0.78, 0.68, 1.2]}>
+        <boxGeometry args={[0.035, 0.34, 0.035]} />
+        <meshStandardMaterial color="#101216" />
+      </mesh>
+
       {/* Ruedas */}
       {spec.wheelPositions.map((position, i) => (
         <group
@@ -134,7 +195,7 @@ export function PlayerVehicle({ game }: { game: Game }) {
 
       {/* Retrovisores: interior, izquierdo (lado conductor) y derecho */}
       <RearViewMirror position={[0, 1.16, 0.8]} width={0.3} height={0.09} fov={20} />
-      <RearViewMirror position={[0.95, 0.85, 0.95]} width={0.22} height={0.13} tilt={0.3} cameraYaw={-0.25} fov={38} phase={1} />
+      <RearViewMirror position={[0.97, 0.85, 0.88]} width={0.22} height={0.13} tilt={0.3} cameraYaw={-0.18} fov={38} phase={1} />
       <RearViewMirror position={[-0.78, 0.85, 1.2]} width={0.22} height={0.13} tilt={-0.3} cameraYaw={0.25} fov={38} phase={1} />
 
       {/* Asiento del conductor (izquierda); mirando hacia +z */}

@@ -47,14 +47,22 @@ export class AutomaticGearbox {
     return true;
   }
 
-  computeDrive(input: { throttle: number; brake: number }, _speedKmh: number): DriveCommand {
+  computeDrive(input: { throttle: number; brake: number }, speedKmh: number): DriveCommand {
+    // Potencia constante: a más velocidad, menos fuerza disponible.
+    const speedMs = Math.max(Math.abs(speedKmh) / 3.6, 1);
+    const availableForce = Math.min(this.spec.maxEngineForce, this.spec.maxPowerWatts / speedMs);
+
     let engineForce = 0;
     if (this.current === 'D') {
-      engineForce = input.throttle * this.spec.maxEngineForce;
+      engineForce = input.throttle * availableForce;
     } else if (this.current === 'R') {
-      engineForce = -input.throttle * this.spec.maxEngineForce * this.spec.reverseForceRatio;
+      engineForce = -input.throttle * availableForce * this.spec.reverseForceRatio;
     }
-    return { engineForce, brakeForce: input.brake * this.spec.maxBrakeForce };
+
+    let brakeForce = input.brake * this.spec.maxBrakeForce;
+    if (input.throttle === 0) brakeForce += this.spec.engineBrakeForce;
+
+    return { engineForce, brakeForce };
   }
 
   private canEngage(gear: Gear, speedKmh: number): boolean {

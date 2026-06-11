@@ -71,6 +71,24 @@ describe('AutomaticGearbox', () => {
     expect(drive.brakeForce).toBe(spec.maxBrakeForce * 0.5);
   });
 
+  it('a alta velocidad la fuerza queda limitada por la potencia', () => {
+    const { gearbox } = createGearbox();
+    gearbox.shift('up', 0);
+
+    const drive = gearbox.computeDrive({ throttle: 1, brake: 0 }, 120);
+    const expected = spec.maxPowerWatts / (120 / 3.6);
+    expect(drive.engineForce).toBeCloseTo(expected, 5);
+    expect(drive.engineForce).toBeLessThan(spec.maxEngineForce);
+  });
+
+  it('al soltar el acelerador actúa el freno motor', () => {
+    const { gearbox } = createGearbox();
+    gearbox.shift('up', 0);
+
+    expect(gearbox.computeDrive({ throttle: 0, brake: 0 }, 60).brakeForce).toBe(spec.engineBrakeForce);
+    expect(gearbox.computeDrive({ throttle: 1, brake: 0 }, 60).brakeForce).toBe(0);
+  });
+
   it('en R el acelerador empuja hacia atrás con fuerza reducida', () => {
     const { gearbox } = createGearbox();
     gearbox.shift('down', 0);

@@ -8,9 +8,9 @@ export function Ground() {
   return (
     <>
       <RigidBody type="fixed" colliders={false}>
-        <CuboidCollider args={[200, 0.5, 200]} position={[0, -0.5, 0]} />
+        <CuboidCollider args={[1000, 0.5, 1000]} position={[0, -0.5, 0]} />
         <mesh receiveShadow position={[0, -0.5, 0]}>
-          <boxGeometry args={[400, 1, 400]} />
+          <boxGeometry args={[2000, 1, 2000]} />
           <meshStandardMaterial color="#5d7052" />
         </mesh>
       </RigidBody>
