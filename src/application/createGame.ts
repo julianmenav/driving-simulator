@@ -1,15 +1,21 @@
 import { EventBus } from '@domain/events/EventBus';
 import type { GameEventBus, GameEvents } from '@domain/events/GameEvents';
+import type { ControlsPort } from './ports/ControlsPort';
 
 export interface Game {
   readonly events: GameEventBus;
+  readonly controls: ControlsPort;
+}
+
+export interface GameDependencies {
+  controls: ControlsPort;
 }
 
 /**
- * Raíz de composición del juego. Aquí se irán cableando los puertos con
- * sus adaptadores de infraestructura (físicas, input, persistencia…).
+ * Raíz de composición del juego: recibe los adaptadores (creados en main)
+ * ya como puertos. Aquí se irán cableando físicas, persistencia, etc.
  */
-export function createGame(): Game {
+export function createGame({ controls }: GameDependencies): Game {
   const events: GameEventBus = new EventBus<GameEvents>();
-  return { events };
+  return { events, controls };
 }
