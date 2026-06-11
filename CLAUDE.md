@@ -68,7 +68,10 @@ Orden de implementación de fase 1 (cada paso da resultado visible):
 - ✅ Paso 1 completado (jun 2026): esqueleto Vite+TS+React 19, capas con alias (`@domain`, `@application`, `@infrastructure`, `@ui`), `EventBus` tipado en dominio con 9 tests, `createGame()` como raíz de composición.
 - ✅ Paso 2 completado (jun 2026): escena R3F con suelo/carretera/obstáculos y vehículo Rapier conducible en primera persona. `ControlsPort` + `KeyboardControlsAdapter` (WASD/flechas, con tests). `VehicleSpec` en dominio (convención de ejes: **+z = frente, +x = izquierda del conductor**; eje de rueda -x para que fuerza positiva empuje a +z). `PlayerVehicle` usa `world.createVehicleController` (DynamicRayCastVehicleController) con `useBeforePhysicsStep`; publica `vehicle/stateUpdated` cada tick. Verificado con captura headless: render, conducción y giro OK. Pendiente de pulir: tuning de frenada/suspensión, tamaño del salpicadero en pantalla.
 - ✅ Paso 3 completado (jun 2026): `AutomaticGearbox` en dominio (palanca R·N·D con Q/E; no engrana D/R en sentido contrario a >6 km/h; `computeDrive` decide fuerzas según marcha; publica `vehicle/gearChanged`). `ControlsPort.consumeShiftRequests()` como cola de pulsaciones. El coche arranca en N. Verificado en headless: en N no avanza, tras E (D) sí.
-- Siguiente: paso 4 — HUD con velocímetro (suscribirse a `vehicle/stateUpdated` y `vehicle/gearChanged`).
+- ✅ Paso 4 completado (jun 2026): HUD con velocímetro y marcha (`src/ui/Hud.tsx`). La velocidad (60 Hz por el bus) se escribe directa al DOM vía ref; la marcha usa estado React.
+- ✅ Paso 5 completado (jun 2026): retrovisores (`RearViewMirror`): plano + cámara trasera (-z local) + `useFBO` 384px, textura invertida en X, refresco 1 de cada 2 frames con desfase entre espejos. Central + laterales montados en `PlayerVehicle`.
+- **FASE 1 COMPLETA.** Siguiente: features futuras — sugerido empezar por mapas data-driven (GLTF + manifest) o sistema de infracciones sobre el bus.
+- Pulido pendiente: tuning de conducción (acelera 0→80 en ~3 s, quizá demasiado), salpicadero grande en pantalla, espejos flotan (no hay parabrisas/pilares visibles).
 
 ## Comandos y entorno
 

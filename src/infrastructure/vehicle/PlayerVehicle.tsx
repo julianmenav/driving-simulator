@@ -12,6 +12,7 @@ import { useEffect, useRef } from 'react';
 import type { Group } from 'three';
 import type { Game } from '@application/createGame';
 import { DEFAULT_VEHICLE_SPEC as spec } from '@domain/vehicle/VehicleSpec';
+import { RearViewMirror } from '@infrastructure/rendering/RearViewMirror';
 
 const WHEEL_DIRECTION = { x: 0, y: -1, z: 0 };
 // Con el eje de rueda en -x, fuerza de motor positiva empuja hacia +z (frente).
@@ -131,8 +132,13 @@ export function PlayerVehicle({ game }: { game: Game }) {
         </group>
       ))}
 
+      {/* Retrovisores: interior, izquierdo (lado conductor) y derecho */}
+      <RearViewMirror position={[0, 1.16, 0.8]} width={0.3} height={0.09} fov={20} />
+      <RearViewMirror position={[0.95, 0.85, 0.95]} width={0.22} height={0.13} tilt={0.3} cameraYaw={-0.25} fov={38} phase={1} />
+      <RearViewMirror position={[-0.78, 0.85, 1.2]} width={0.22} height={0.13} tilt={-0.3} cameraYaw={0.25} fov={38} phase={1} />
+
       {/* Asiento del conductor (izquierda); mirando hacia +z */}
-      <PerspectiveCamera makeDefault fov={70} near={0.1} far={500} position={[0.38, 0.95, 0.15]} rotation={[0, Math.PI, 0]} />
+      <PerspectiveCamera makeDefault fov={72} near={0.1} far={500} position={[0.3, 0.95, 0.15]} rotation={[0, Math.PI, 0]} />
     </RigidBody>
   );
 }
