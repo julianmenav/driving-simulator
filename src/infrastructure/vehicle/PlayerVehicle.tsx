@@ -9,9 +9,10 @@ import {
   type RapierRigidBody,
 } from '@react-three/rapier';
 import { useEffect, useRef } from 'react';
-import { DoubleSide, type Group } from 'three';
+import { type Group, type PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 import type { Game } from '@application/createGame';
 import { DEFAULT_VEHICLE_SPEC as spec } from '@domain/vehicle/VehicleSpec';
+import { Cabin } from '@infrastructure/vehicle/Cabin';
 import { RearViewMirror } from '@infrastructure/rendering/RearViewMirror';
 
 const WHEEL_DIRECTION = { x: 0, y: -1, z: 0 };
@@ -33,6 +34,18 @@ export function PlayerVehicle({ game }: { game: Game }) {
   const controllerRef = useRef<DynamicRayCastVehicleController | null>(null);
   const wheelRefs = useRef<(Group | null)[]>([]);
   const steeringRef = useRef(0);
+  const cameraRef = useRef<ThreePerspectiveCamera>(null);
+  const egoRef = useRef<Group>(null);
+
+  // The first-person camera renders the cabin interior (layer 1) and the
+  // exterior bodywork (layer 2); the mirror cameras stay on layer 0, so they
+  // reflect only the world behind — no interior trim and no shadowed faces of
+  // our own body leaking in as stray dark bands.
+  useEffect(() => {
+    cameraRef.current?.layers.enable(1);
+    cameraRef.current?.layers.enable(2);
+    egoRef.current?.traverse((o) => o.layers.set(2));
+  }, []);
 
   useEffect(() => {
     const chassis = chassisRef.current;
@@ -115,111 +128,48 @@ export function PlayerVehicle({ game }: { game: Game }) {
     <RigidBody ref={chassisRef} type="dynamic" colliders={false} position={[0, 1.1, 0]} canSleep={false}>
       <CuboidCollider args={[hx, hy, hz]} mass={spec.chassisMass} />
 
-      {/* Body */}
-      <mesh castShadow>
-        <boxGeometry args={[hx * 2, hy * 2, hz * 2]} />
-        <meshStandardMaterial color="#a33434" />
-      </mesh>
-      {/* Hood, visible from the driver seat */}
-      <mesh castShadow position={[0, 0.43, 1.45]}>
-        <boxGeometry args={[hx * 2 - 0.1, 0.16, 1.2]} />
-        <meshStandardMaterial color="#8f2b2b" />
-      </mesh>
-      {/* Dashboard */}
-      <mesh position={[0, 0.58, 0.78]}>
-        <boxGeometry args={[hx * 2 - 0.2, 0.22, 0.45]} />
-        <meshStandardMaterial color="#1d1f24" />
-      </mesh>
+      {/* Exterior bodywork + wheels, on layer 2 (kept out of the mirrors) */}
+      <group ref={egoRef}>
+        {/* Body */}
+        <mesh castShadow>
+          <boxGeometry args={[hx * 2, hy * 2, hz * 2]} />
+          <meshStandardMaterial color="#a33434" />
+        </mesh>
+        {/* Hood, visible from the driver seat */}
+        <mesh castShadow position={[0, 0.43, 1.45]}>
+          <boxGeometry args={[hx * 2 - 0.1, 0.16, 1.2]} />
+          <meshStandardMaterial color="#8f2b2b" />
+        </mesh>
+        {/* Wheels */}
+        {spec.wheelPositions.map((position, i) => (
+          <group
+            key={i}
+            position={position}
+            ref={(el) => {
+              wheelRefs.current[i] = el;
+            }}
+          >
+            <mesh castShadow rotation-z={Math.PI / 2}>
+              <cylinderGeometry args={[spec.wheelRadius, spec.wheelRadius, WHEEL_WIDTH, 20]} />
+              <meshStandardMaterial color="#16181c" />
+            </mesh>
+          </group>
+        ))}
+      </group>
 
-      {/* Cabin: A pillars, windshield frame, roof, B pillars and window line */}
-      <mesh castShadow position={[0.78, 1.03, 0.85]} rotation-x={-0.35}>
-        <boxGeometry args={[0.06, 0.85, 0.06]} />
-        <meshStandardMaterial color="#1f2227" />
-      </mesh>
-      <mesh castShadow position={[-0.78, 1.03, 0.85]} rotation-x={-0.35}>
-        <boxGeometry args={[0.06, 0.85, 0.06]} />
-        <meshStandardMaterial color="#1f2227" />
-      </mesh>
-      <mesh castShadow position={[0, 1.36, 0.72]}>
-        <boxGeometry args={[1.64, 0.1, 0.1]} />
-        <meshStandardMaterial color="#1f2227" />
-      </mesh>
-      <mesh castShadow position={[0, 1.39, -0.12]}>
-        <boxGeometry args={[1.8, 0.07, 1.9]} />
-        <meshStandardMaterial color="#1f2227" />
-      </mesh>
-      <mesh castShadow position={[0.8, 1.05, -0.95]}>
-        <boxGeometry args={[0.08, 0.78, 0.08]} />
-        <meshStandardMaterial color="#1f2227" />
-      </mesh>
-      <mesh castShadow position={[-0.8, 1.05, -0.95]}>
-        <boxGeometry args={[0.08, 0.78, 0.08]} />
-        <meshStandardMaterial color="#1f2227" />
-      </mesh>
-      <mesh position={[0.85, 0.78, -0.05]}>
-        <boxGeometry args={[0.07, 0.12, 1.9]} />
-        <meshStandardMaterial color="#1f2227" />
-      </mesh>
-      <mesh position={[-0.85, 0.78, -0.05]}>
-        <boxGeometry args={[0.07, 0.12, 1.9]} />
-        <meshStandardMaterial color="#1f2227" />
-      </mesh>
+      {/* First-person interior (dashboard, wheel, doors, glass...) on layer 1 */}
+      <Cabin game={game} steeringRef={steeringRef} />
 
-      {/* Glass: windshield, side windows and rear window */}
-      <mesh position={[0, 1.03, 0.85]} rotation-x={-0.35}>
-        <planeGeometry args={[1.56, 0.85]} />
-        <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
-      </mesh>
-      <mesh position={[0.86, 1.05, -0.05]} rotation-y={Math.PI / 2}>
-        <planeGeometry args={[1.7, 0.6]} />
-        <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
-      </mesh>
-      <mesh position={[-0.86, 1.05, -0.05]} rotation-y={Math.PI / 2}>
-        <planeGeometry args={[1.7, 0.6]} />
-        <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
-      </mesh>
-      <mesh position={[0, 1.06, -0.99]}>
-        <planeGeometry args={[1.5, 0.55]} />
-        <meshStandardMaterial color="#9fc4dd" transparent opacity={0.16} roughness={0.05} side={DoubleSide} depthWrite={false} />
-      </mesh>
-
-      {/* Mirror mounts: center stalk and door arms */}
-      <mesh position={[0, 1.25, 0.72]}>
-        <boxGeometry args={[0.03, 0.1, 0.03]} />
-        <meshStandardMaterial color="#101216" />
-      </mesh>
-      <mesh position={[0.9, 0.93, 0.9]}>
-        <boxGeometry args={[0.14, 0.035, 0.035]} />
-        <meshStandardMaterial color="#101216" />
-      </mesh>
-      <mesh position={[-0.9, 0.93, 1.15]}>
-        <boxGeometry args={[0.14, 0.035, 0.035]} />
-        <meshStandardMaterial color="#101216" />
-      </mesh>
-
-      {/* Wheels */}
-      {spec.wheelPositions.map((position, i) => (
-        <group
-          key={i}
-          position={position}
-          ref={(el) => {
-            wheelRefs.current[i] = el;
-          }}
-        >
-          <mesh castShadow rotation-z={Math.PI / 2}>
-            <cylinderGeometry args={[spec.wheelRadius, spec.wheelRadius, WHEEL_WIDTH, 20]} />
-            <meshStandardMaterial color="#16181c" />
-          </mesh>
-        </group>
-      ))}
-
-      {/* Rear-view mirrors: interior and door mirrors (above the window line) */}
+      {/* Rear-view mirrors: interior and door mirrors. The door cameras look
+          nearly straight back with a slight downward pitch, so they frame the
+          road behind (a clean receding lane) like the interior mirror. */}
       <RearViewMirror position={[0, 1.16, 0.72]} width={0.3} height={0.09} fov={20} />
-      <RearViewMirror position={[0.97, 0.93, 0.9]} width={0.22} height={0.13} tilt={0.3} cameraYaw={-0.15} fov={38} phase={1} />
-      <RearViewMirror position={[-0.97, 0.93, 1.15]} width={0.22} height={0.13} tilt={-0.3} cameraYaw={0.15} fov={38} phase={1} />
+      <RearViewMirror position={[0.97, 0.93, 0.9]} width={0.22} height={0.13} tilt={0.3} cameraYaw={-0.07} cameraPitch={-0.1} fov={32} phase={1} />
+      <RearViewMirror position={[-0.97, 0.93, 1.15]} width={0.22} height={0.13} tilt={-0.3} cameraYaw={0.07} cameraPitch={-0.1} fov={32} phase={1} />
 
-      {/* Driver seat (left side); looking towards +z */}
-      <PerspectiveCamera makeDefault fov={80} near={0.1} far={500} position={[0.3, 0.95, 0.15]} rotation={[0, Math.PI, 0]} />
+      {/* Driver seat (left side); raised eye point for a clear road view over
+          the low wheel, looking towards +z */}
+      <PerspectiveCamera ref={cameraRef} makeDefault fov={80} near={0.1} far={500} position={[0.3, 1.1, 0.12]} rotation={[0, Math.PI, 0]} />
     </RigidBody>
   );
 }
