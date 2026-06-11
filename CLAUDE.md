@@ -65,14 +65,17 @@ Orden de implementación de fase 1 (cada paso da resultado visible):
 
 ## Estado actual
 
-- ✅ Paso 1 completado (jun 2026): esqueleto Vite+TS+React 19, capas con alias (`@domain`, `@application`, `@infrastructure`, `@ui`), `EventBus` tipado en dominio con 9 tests, `createGame()` como raíz de composición, UI provisional que demuestra el bus.
-- Siguiente: paso 2 — escena R3F con suelo y vehículo Rapier conducible.
+- ✅ Paso 1 completado (jun 2026): esqueleto Vite+TS+React 19, capas con alias (`@domain`, `@application`, `@infrastructure`, `@ui`), `EventBus` tipado en dominio con 9 tests, `createGame()` como raíz de composición.
+- ✅ Paso 2 completado (jun 2026): escena R3F con suelo/carretera/obstáculos y vehículo Rapier conducible en primera persona. `ControlsPort` + `KeyboardControlsAdapter` (WASD/flechas, con tests). `VehicleSpec` en dominio (convención de ejes: **+z = frente, +x = izquierda del conductor**; eje de rueda -x para que fuerza positiva empuje a +z). `PlayerVehicle` usa `world.createVehicleController` (DynamicRayCastVehicleController) con `useBeforePhysicsStep`; publica `vehicle/stateUpdated` cada tick. Verificado con captura headless: render, conducción y giro OK. Pendiente de pulir: tuning de frenada/suspensión, tamaño del salpicadero en pantalla.
+- Provisional: S con el coche parado = marcha atrás (lógica en `PlayerVehicle`); se sustituye por la caja D/N/R en el paso 3.
+- Siguiente: paso 3 — caja de cambios D/N/R en dominio.
 
 ## Comandos y entorno
 
 - Node se gestiona con **nvm.fish**; en shells no interactivas no está en PATH. Usar:
   `export PATH="$HOME/.local/share/nvm/v24.15.0/bin:$PATH"` antes de npm/node.
 - `npm run dev` · `npm test` · `npm run build` (typecheck + bundle).
+- Verificación visual headless: no hay chromium-cli; usar `playwright-core` (instalado ad hoc en /tmp) con `executablePath: /usr/bin/google-chrome-stable` y flags `--no-sandbox --enable-unsafe-swiftshader --use-angle=swiftshader`; esperar ~7 s a que cargue el WASM de Rapier antes de capturar.
 - TypeScript 6: `baseUrl` está deprecado — los `paths` del tsconfig usan rutas relativas.
 
 ## Referencias
