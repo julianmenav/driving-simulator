@@ -35,16 +35,12 @@ export function PlayerVehicle({ game }: { game: Game }) {
   const wheelRefs = useRef<(Group | null)[]>([]);
   const steeringRef = useRef(0);
   const cameraRef = useRef<ThreePerspectiveCamera>(null);
-  const egoRef = useRef<Group>(null);
 
-  // The first-person camera renders the cabin interior (layer 1) and the
-  // exterior bodywork (layer 2); the mirror cameras stay on layer 0, so they
-  // reflect only the world behind — no interior trim and no shadowed faces of
-  // our own body leaking in as stray dark bands.
+  // The first-person camera also renders the cabin interior (layer 1). The
+  // exterior bodywork stays on layer 0, so it shows up in the mirrors too
+  // (a sliver of our own car), while the interior trim (layer 1) does not.
   useEffect(() => {
     cameraRef.current?.layers.enable(1);
-    cameraRef.current?.layers.enable(2);
-    egoRef.current?.traverse((o) => o.layers.set(2));
   }, []);
 
   useEffect(() => {
@@ -128,8 +124,8 @@ export function PlayerVehicle({ game }: { game: Game }) {
     <RigidBody ref={chassisRef} type="dynamic" colliders={false} position={[0, 1.1, 0]} canSleep={false}>
       <CuboidCollider args={[hx, hy, hz]} mass={spec.chassisMass} />
 
-      {/* Exterior bodywork + wheels, on layer 2 (kept out of the mirrors) */}
-      <group ref={egoRef}>
+      {/* Exterior bodywork + wheels (layer 0, also seen in the mirrors) */}
+      <group>
         {/* Body */}
         <mesh castShadow>
           <boxGeometry args={[hx * 2, hy * 2, hz * 2]} />
@@ -160,12 +156,14 @@ export function PlayerVehicle({ game }: { game: Game }) {
       {/* First-person interior (dashboard, wheel, doors, glass...) on layer 1 */}
       <Cabin game={game} steeringRef={steeringRef} />
 
-      {/* Rear-view mirrors: interior and door mirrors. The door cameras look
-          nearly straight back with a slight downward pitch, so they frame the
-          road behind (a clean receding lane) like the interior mirror. */}
+      {/* Rear-view mirrors: interior mirror + door mirrors out on each door
+          (the right one sits far out on the passenger side, barely on screen).
+          The door cameras look back with a slight downward pitch and a touch of
+          inward yaw, so they catch the road plus a sliver of our own bodywork.
+          Lower fov = a little zoom. */}
       <RearViewMirror position={[0, 1.16, 0.72]} width={0.3} height={0.09} fov={20} />
-      <RearViewMirror position={[0.97, 0.93, 0.9]} width={0.22} height={0.13} tilt={0.3} cameraYaw={-0.07} cameraPitch={-0.1} fov={32} phase={1} />
-      <RearViewMirror position={[-0.97, 0.93, 1.15]} width={0.22} height={0.13} tilt={-0.3} cameraYaw={0.07} cameraPitch={-0.1} fov={32} phase={1} />
+      <RearViewMirror position={[0.99, 0.92, 1.0]} width={0.22} height={0.13} tilt={0.32} cameraYaw={-0.16} cameraPitch={-0.1} fov={26} phase={1} />
+      <RearViewMirror position={[-0.99, 0.92, 1.0]} width={0.22} height={0.13} tilt={-0.32} cameraYaw={0.16} cameraPitch={-0.1} fov={26} phase={1} />
 
       {/* Driver seat (left side); raised eye point for a clear road view over
           the low wheel, looking towards +z */}

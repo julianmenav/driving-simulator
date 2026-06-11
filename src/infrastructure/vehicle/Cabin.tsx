@@ -169,12 +169,12 @@ export function Cabin({ game, steeringRef }: CabinProps) {
         <boxGeometry args={[0.03, 0.1, 0.03]} />
         <meshStandardMaterial color="#101216" />
       </mesh>
-      <mesh position={[0.92, 0.83, 0.9]}>
-        <boxGeometry args={[0.16, 0.04, 0.05]} />
+      <mesh position={[0.93, 0.82, 1.0]}>
+        <boxGeometry args={[0.18, 0.04, 0.05]} />
         <meshStandardMaterial color="#101216" />
       </mesh>
-      <mesh position={[-0.92, 0.83, 1.15]}>
-        <boxGeometry args={[0.16, 0.04, 0.05]} />
+      <mesh position={[-0.93, 0.82, 1.0]}>
+        <boxGeometry args={[0.18, 0.04, 0.05]} />
         <meshStandardMaterial color="#101216" />
       </mesh>
     </group>
