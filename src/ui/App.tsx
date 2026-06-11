@@ -1,6 +1,5 @@
 import type { Game } from '@application/createGame';
 import { SimulatorCanvas } from '@infrastructure/rendering/SimulatorCanvas';
-import { Hud } from './Hud';
 
 export function App({ game }: { game: Game }) {
   return (
@@ -13,7 +12,6 @@ export function App({ game }: { game: Game }) {
           <kbd>E</kbd>/<kbd>Q</kbd> marcha (R·N·D)
         </p>
       </div>
-      <Hud game={game} />
     </div>
   );
 }
