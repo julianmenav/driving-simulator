@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Game } from '@application/createGame';
 import type { TrafficLightSpec } from '@domain/map/MapManifest';
+import { elevationAt } from '@domain/map/elevation';
 import type { TrafficColor } from '@domain/traffic/TrafficSignals';
 
 const LAMP = {
@@ -34,8 +35,9 @@ function Light({ game, light }: { game: Game; light: TrafficLightSpec }) {
   const facing = light.axis === 'z' ? -light.travelSign : 0;
   const rotY = light.axis === 'z' ? (facing > 0 ? 0 : Math.PI) : light.travelSign > 0 ? -Math.PI / 2 : Math.PI / 2;
 
+  const baseY = elevationAt(game.map.terrain, light.x, light.z);
   return (
-    <group position={[light.x, 0, light.z]} rotation-y={rotY}>
+    <group position={[light.x, baseY, light.z]} rotation-y={rotY}>
       {/* Pole */}
       <mesh position={[0, 2.4, 0]} castShadow>
         <cylinderGeometry args={[0.08, 0.08, 4.8, 8]} />

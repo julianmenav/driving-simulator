@@ -5,6 +5,7 @@ import type {
   Prop,
   RoadSegment,
   SpeedZone,
+  TerrainSpec,
   TrafficLightSpec,
 } from '@domain/map/MapManifest';
 
@@ -100,9 +101,18 @@ export function buildGridCity(options: GridCityOptions = {}): MapManifest {
     phaseOffset: i * 4,
   }));
 
+  // Gentle rolling hills (sum of long-wavelength sinusoids).
+  const terrain: TerrainSpec = {
+    components: [
+      { amplitude: 2.0, wavelengthX: 30, wavelengthZ: 38, phase: 0.4 },
+      { amplitude: 1.0, wavelengthX: 17, wavelengthZ: 21, phase: 1.7 },
+    ],
+  };
+
   return {
     name: 'Grid City',
     spawn,
+    terrain,
     defaultLimitKmh: 50,
     roads,
     speedZones,

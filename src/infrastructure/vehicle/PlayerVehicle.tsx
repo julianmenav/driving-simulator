@@ -11,6 +11,7 @@ import {
 import { useEffect, useRef } from 'react';
 import { type Group, type PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 import type { Game } from '@application/createGame';
+import { elevationAt } from '@domain/map/elevation';
 import { DEFAULT_VEHICLE_SPEC as spec } from '@domain/vehicle/VehicleSpec';
 import { Cabin } from '@infrastructure/vehicle/Cabin';
 import { RearViewMirror } from '@infrastructure/rendering/RearViewMirror';
@@ -128,13 +129,14 @@ export function PlayerVehicle({ game }: { game: Game }) {
 
   const [hx, hy, hz] = spec.chassisHalfExtents;
   const { spawn } = game.map;
+  const spawnY = elevationAt(game.map.terrain, spawn.x, spawn.z) + 1.1;
 
   return (
     <RigidBody
       ref={chassisRef}
       type="dynamic"
       colliders={false}
-      position={[spawn.x, 1.1, spawn.z]}
+      position={[spawn.x, spawnY, spawn.z]}
       rotation={[0, spawn.headingRad, 0]}
       canSleep={false}
     >

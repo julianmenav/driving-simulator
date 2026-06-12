@@ -80,9 +80,23 @@ export interface TrafficLightSpec {
   phaseOffset: number;
 }
 
+/** One sinusoidal component of the terrain height field. */
+export interface TerrainComponent {
+  amplitude: number;
+  wavelengthX: number;
+  wavelengthZ: number;
+  phase: number;
+}
+
+/** Terrain as a sum of gentle sinusoids; see `elevationAt`. */
+export interface TerrainSpec {
+  components: TerrainComponent[];
+}
+
 export interface MapManifest {
   name: string;
   spawn: Spawn;
+  terrain: TerrainSpec;
   /** Limit (km/h) anywhere not covered by a speed zone. */
   defaultLimitKmh: number;
   roads: RoadSegment[];
