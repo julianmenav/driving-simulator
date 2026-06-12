@@ -14,7 +14,7 @@ export type GameMode = 'practice' | 'exam';
 export interface GameEvents {
   'game/started': { mode: GameMode };
   'vehicle/gearChanged': { previous: Gear; current: Gear };
-  'vehicle/stateUpdated': { speedKmh: number };
+  'vehicle/stateUpdated': { speedKmh: number; position: { x: number; z: number } };
   'infraction/committed': { infraction: Infraction };
 }
 

@@ -12,8 +12,8 @@ export class InfractionMonitor {
   private readonly unsubscribe: Unsubscribe;
 
   constructor(events: GameEventBus, rules: Rule[]) {
-    this.unsubscribe = events.subscribe('vehicle/stateUpdated', ({ speedKmh }) => {
-      const snapshot = { speedKmh };
+    this.unsubscribe = events.subscribe('vehicle/stateUpdated', ({ speedKmh, position }) => {
+      const snapshot = { speedKmh, position };
       for (const rule of rules) {
         const infraction = rule.evaluate(snapshot);
         if (infraction) events.publish('infraction/committed', { infraction });

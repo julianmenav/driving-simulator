@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { Suspense } from 'react';
 import type { Game } from '@application/createGame';
-import { Ground, Obstacles } from './Ground';
+import { CityMap } from './CityMap';
 import { PlayerVehicle } from '@infrastructure/vehicle/PlayerVehicle';
 
 export function SimulatorCanvas({ game }: { game: Game }) {
@@ -25,8 +25,7 @@ export function SimulatorCanvas({ game }: { game: Game }) {
       />
       <Suspense fallback={null}>
         <Physics>
-          <Ground />
-          <Obstacles />
+          <CityMap manifest={game.map} />
           <PlayerVehicle game={game} />
         </Physics>
       </Suspense>

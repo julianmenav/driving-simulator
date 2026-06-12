@@ -100,7 +100,11 @@ export function PlayerVehicle({ game }: { game: Game }) {
 
     controller.updateVehicle(dt);
 
-    game.events.publish('vehicle/stateUpdated', { speedKmh });
+    const translation = chassisRef.current?.translation();
+    game.events.publish('vehicle/stateUpdated', {
+      speedKmh,
+      position: { x: translation?.x ?? 0, z: translation?.z ?? 0 },
+    });
   });
 
   // Places the visual wheels according to suspension travel, steering and rolling.
@@ -119,9 +123,17 @@ export function PlayerVehicle({ game }: { game: Game }) {
   });
 
   const [hx, hy, hz] = spec.chassisHalfExtents;
+  const { spawn } = game.map;
 
   return (
-    <RigidBody ref={chassisRef} type="dynamic" colliders={false} position={[0, 1.1, 0]} canSleep={false}>
+    <RigidBody
+      ref={chassisRef}
+      type="dynamic"
+      colliders={false}
+      position={[spawn.x, 1.1, spawn.z]}
+      rotation={[0, spawn.headingRad, 0]}
+      canSleep={false}
+    >
       <CuboidCollider args={[hx, hy, hz]} mass={spec.chassisMass} />
 
       {/* Exterior bodywork + wheels (layer 0, also seen in the mirrors) */}
