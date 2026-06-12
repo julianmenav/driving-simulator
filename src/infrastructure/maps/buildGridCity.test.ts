@@ -20,18 +20,47 @@ describe('buildGridCity', () => {
     expect(buildGridCity({ blocks: 3 }).buildings.length).toBe(9);
   });
 
-  it('places zebra crossings on the spawn avenue', () => {
+  it('spreads traffic lights across many streets, on both axes and directions', () => {
     const map = buildGridCity();
-    expect(map.crossings.length).toBeGreaterThan(0);
-    expect(map.crossings.every((c) => c.x === map.spawn.x)).toBe(true);
+    const vertical = map.trafficLights.filter((l) => l.axis === 'z');
+    const horizontal = map.trafficLights.filter((l) => l.axis === 'x');
+    expect(new Set(vertical.map((l) => Math.round((l.laneMin + l.laneMax) / 2))).size).toBeGreaterThan(2);
+    expect(new Set(horizontal.map((l) => Math.round((l.laneMin + l.laneMax) / 2))).size).toBeGreaterThan(2);
+    expect(map.trafficLights.some((l) => l.travelSign === -1)).toBe(true);
   });
 
-  it('places northbound traffic lights along the spawn avenue', () => {
+  it('controls a junction with all its approaches, N-S and E-W in opposite phases', () => {
     const map = buildGridCity();
-    expect(map.trafficLights.length).toBeGreaterThan(0);
-    expect(map.trafficLights.every((l) => l.axis === 'z' && l.travelSign === 1)).toBe(true);
-    // The spawn avenue lane band contains the spawn x.
-    expect(map.trafficLights.every((l) => l.laneMin <= map.spawn.x && map.spawn.x <= l.laneMax)).toBe(true);
+    const byJunction = new Map<string, typeof map.trafficLights>();
+    for (const l of map.trafficLights) {
+      const key = l.id.split('-').slice(1, 3).join('-');
+      byJunction.set(key, [...(byJunction.get(key) ?? []), l]);
+    }
+    // Interior controlled junctions have exactly 4 approaches.
+    const interior = [...byJunction.values()].filter((ls) => ls.length === 4);
+    expect(interior.length).toBeGreaterThan(0);
+    for (const lights of interior) {
+      const ns = lights.filter((l) => l.axis === 'z');
+      const ew = lights.filter((l) => l.axis === 'x');
+      expect(ns).toHaveLength(2);
+      expect(ew).toHaveLength(2);
+      expect(Math.abs(ew[0].phaseOffset - ns[0].phaseOffset)).toBeCloseTo(9); // half cycle
+    }
+  });
+
+  it('leaves some junctions uncontrolled (streets are not homogeneous)', () => {
+    const map = buildGridCity();
+    const controlledJunctions = new Set(map.trafficLights.map((l) => l.id.split('-').slice(1, 3).join('-')));
+    const totalJunctions = 6 * 6; // (blocks + 1)^2 road lines
+    expect(controlledJunctions.size).toBeGreaterThan(4);
+    expect(controlledJunctions.size).toBeLessThan(totalJunctions);
+  });
+
+  it('places zebra crossings on both road axes, map-wide', () => {
+    const map = buildGridCity();
+    expect(map.crossings.some((c) => c.axis === 'z')).toBe(true);
+    expect(map.crossings.some((c) => c.axis === 'x')).toBe(true);
+    expect(new Set(map.crossings.map((c) => `${Math.round(c.x)}|${Math.round(c.z)}`)).size).toBeGreaterThan(20);
   });
 
   it('spawns the vehicle on a road', () => {

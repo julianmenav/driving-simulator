@@ -3,11 +3,15 @@ import type { TrafficLightSpec } from '@domain/map/MapManifest';
 
 export type TrafficColor = 'green' | 'amber' | 'red';
 
-/** Phase durations (seconds). The cycle is green → amber → red → green. */
+/**
+ * Phase durations (seconds). The cycle is green → amber → red → green.
+ * red = green + amber, so two lights half a cycle apart alternate perfectly
+ * (one axis is green/amber exactly while the crossing axis is red).
+ */
 export const PHASE_SECONDS: Record<TrafficColor, number> = {
   green: 7,
   amber: 2,
-  red: 7,
+  red: 9,
 };
 
 const CYCLE_SECONDS = PHASE_SECONDS.green + PHASE_SECONDS.amber + PHASE_SECONDS.red;

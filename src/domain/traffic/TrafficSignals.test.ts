@@ -50,4 +50,18 @@ describe('TrafficSignals', () => {
     const { signals } = setup([light({ phaseOffset: PHASE_SECONDS.green })]);
     expect(signals.colorOf('l1')).toBe('amber');
   });
+
+  it('red lasts exactly green + amber, so half-cycle offsets alternate cleanly', () => {
+    expect(PHASE_SECONDS.red).toBe(PHASE_SECONDS.green + PHASE_SECONDS.amber);
+
+    // Two lights half a cycle apart: whenever one is red the other is not.
+    const half = PHASE_SECONDS.green + PHASE_SECONDS.amber;
+    const { signals } = setup([light({ id: 'ns' }), light({ id: 'ew', phaseOffset: half })]);
+    for (let t = 0; t < 36; t += 0.5) {
+      const ns = signals.colorOf('ns');
+      const ew = signals.colorOf('ew');
+      expect(ns === 'red' ? ew !== 'red' : ew === 'red').toBe(true);
+      signals.advance(0.5);
+    }
+  });
 });

@@ -75,31 +75,74 @@ export function buildGridCity(options: GridCityOptions = {}): MapManifest {
     { kind: 'crate', x: avenueX - 1.6, z: spawn.z + 24 },
   ];
 
-  // Interior cross streets the spawn avenue passes through.
-  const crossStreets = lines.filter((z) => !isOuter(z));
+  // --- Intersection-first furniture pass -----------------------------------
+  // Every junction of the grid is computed explicitly; a deterministic
+  // per-intersection `variant` (no RNG) decides its furniture, so streets are
+  // heterogeneous: avenue x avenue junctions always get traffic lights,
+  // avenue x residential usually, residential x residential rarely.
+  // Uncontrolled junctions get zebra crossings on a varying subset of
+  // approaches; controlled junctions get crossings on all approaches.
+  const stopSetback = roadWidth / 2 + 2; // stop line / pole distance from junction centre
+  const crossingSetback = stopSetback + 1.5;
+  const halfCycleSeconds = 9; // green (7) + amber (2): opposite axis is red exactly that long
 
-  // Zebra crossings on the spawn avenue, just before each interior cross street.
-  const crossings: Crossing[] = crossStreets.map((z) => ({
-    x: avenueX,
-    z: z - 6,
-    width: roadWidth,
-    depth: 3,
-    axis: 'z' as const,
-  }));
+  const crossings: Crossing[] = [];
+  const trafficLights: TrafficLightSpec[] = [];
 
-  // A corridor of traffic lights governing northbound avenue traffic, one per
-  // interior intersection, with spread phases so they are not all in sync.
-  const trafficLights: TrafficLightSpec[] = crossStreets.map((z, i) => ({
-    id: `av-n-${i}`,
-    x: avenueX - 6,
-    z: z - 4,
-    axis: 'z' as const,
-    stopCoord: z - 4,
-    travelSign: 1 as const,
-    laneMin: avenueX - 6,
-    laneMax: avenueX + 6,
-    phaseOffset: i * 4,
-  }));
+  lines.forEach((X, xi) => {
+    lines.forEach((Z, zi) => {
+      const variant = (xi * 7 + zi * 11) % 12;
+      const verticalType = isOuter(X) ? 'avenue' : 'residential';
+      const horizontalType = isOuter(Z) ? 'avenue' : 'residential';
+      const avenueCount = (verticalType === 'avenue' ? 1 : 0) + (horizontalType === 'avenue' ? 1 : 0);
+      const controlled =
+        avenueCount === 2 || (avenueCount === 1 ? variant % 3 !== 0 : variant % 4 === 0);
+
+      // Approaches in fixed order: north-, south-, east-, west-bound. Each
+      // exists only if its road actually continues on the arriving side.
+      const approaches = [
+        { key: 'n', exists: zi > 0, axis: 'z' as const, sign: 1 as const },
+        { key: 's', exists: zi < lines.length - 1, axis: 'z' as const, sign: -1 as const },
+        { key: 'e', exists: xi > 0, axis: 'x' as const, sign: 1 as const },
+        { key: 'w', exists: xi < lines.length - 1, axis: 'x' as const, sign: -1 as const },
+      ].filter((a) => a.exists);
+
+      for (const [i, a] of approaches.entries()) {
+        const alongZ = a.axis === 'z';
+        // Stop line sits before the junction, against the direction of travel.
+        const stopCoord = (alongZ ? Z : X) - a.sign * stopSetback;
+
+        if (controlled) {
+          trafficLights.push({
+            id: `tl-${xi}-${zi}-${a.key}`,
+            // Pole at the stop line, just off the kerb.
+            x: alongZ ? X - a.sign * stopSetback : stopCoord,
+            z: alongZ ? stopCoord : Z + a.sign * stopSetback,
+            axis: a.axis,
+            stopCoord,
+            travelSign: a.sign,
+            laneMin: (alongZ ? X : Z) - stopSetback,
+            laneMax: (alongZ ? X : Z) + stopSetback,
+            // N-S and E-W run in opposite phases; `variant` desyncs junctions.
+            phaseOffset: variant * 1.5 + (alongZ ? 0 : halfCycleSeconds),
+          });
+        }
+
+        // Crossings: all approaches when controlled, a variant-picked subset
+        // (at least two) when not.
+        const wanted = controlled || (variant & (1 << i)) !== 0 || approaches.length < 2;
+        const guaranteed = !controlled && i < 2 && !(variant & 0b0011);
+        if (wanted || guaranteed) {
+          const c = (alongZ ? Z : X) - a.sign * crossingSetback;
+          crossings.push(
+            alongZ
+              ? { x: X, z: c, width: roadWidth, depth: 3, axis: 'z' }
+              : { x: c, z: Z, width: 3, depth: roadWidth, axis: 'x' },
+          );
+        }
+      }
+    });
+  });
 
   // Terrain levels: 6x6 cells of plateaus (0..3 x 1.5 m), generally rising
   // west -> east, hand-laid so adjacent cells differ by at most one level.

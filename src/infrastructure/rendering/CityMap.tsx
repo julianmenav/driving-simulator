@@ -83,20 +83,25 @@ function Road({ road, terrain }: { road: RoadSegment; terrain: TerrainSpec }) {
 
 const CROSSING_STRIPES = 5;
 
-/** Painted zebra crossing: a row of white bars across the road, draped on the terrain. */
+/**
+ * Painted zebra crossing, draped on the terrain. The bars' long side runs
+ * parallel to the road (the traffic direction); they repeat across the road's
+ * width, and the pedestrian walks perpendicular to traffic, stepping from bar
+ * to bar.
+ */
 function ZebraCrossing({ crossing, terrain }: { crossing: Crossing; terrain: TerrainSpec }) {
   const alongZ = crossing.axis === 'z';
-  const barLength = (alongZ ? crossing.width : crossing.depth) * 0.85;
-  const span = alongZ ? crossing.depth : crossing.width;
+  const barLength = (alongZ ? crossing.depth : crossing.width) * 0.85; // parallel to the road
+  const span = alongZ ? crossing.width : crossing.depth; // across the road
   const slot = span / CROSSING_STRIPES;
   const bar = slot * 0.55;
   return (
     <>
       {Array.from({ length: CROSSING_STRIPES }, (_, i) => {
         const offset = -span / 2 + (i + 0.5) * slot;
-        const x = crossing.x + (alongZ ? 0 : offset);
-        const z = crossing.z + (alongZ ? offset : 0);
-        const args: [number, number, number] = alongZ ? [barLength, 0.02, bar] : [bar, 0.02, barLength];
+        const x = crossing.x + (alongZ ? offset : 0);
+        const z = crossing.z + (alongZ ? 0 : offset);
+        const args: [number, number, number] = alongZ ? [bar, 0.02, barLength] : [barLength, 0.02, bar];
         return (
           <mesh key={i} position={[x, elevationAt(terrain, x, z) + 0.06, z]}>
             <boxGeometry args={args} />
