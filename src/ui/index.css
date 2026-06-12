@@ -42,3 +42,18 @@ body {
   border-radius: 3px;
   padding: 0 0.3em;
 }
+
+.infraction-warning {
+  position: absolute;
+  top: 1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.55rem 1.1rem;
+  background: rgba(176, 38, 38, 0.85);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  pointer-events: none;
+  white-space: nowrap;
+}

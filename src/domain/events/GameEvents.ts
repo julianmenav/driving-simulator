@@ -1,3 +1,4 @@
+import type { Infraction } from '@domain/infractions/Infraction';
 import type { Gear } from '@domain/vehicle/Gear';
 import type { EventBus } from './EventBus';
 
@@ -14,6 +15,7 @@ export interface GameEvents {
   'game/started': { mode: GameMode };
   'vehicle/gearChanged': { previous: Gear; current: Gear };
   'vehicle/stateUpdated': { speedKmh: number };
+  'infraction/committed': { infraction: Infraction };
 }
 
 export type GameEventType = keyof GameEvents;

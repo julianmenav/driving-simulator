@@ -1,10 +1,12 @@
 import type { Game } from '@application/createGame';
 import { SimulatorCanvas } from '@infrastructure/rendering/SimulatorCanvas';
+import { InfractionWarning } from './InfractionWarning';
 
 export function App({ game }: { game: Game }) {
   return (
     <div className="app-root">
       <SimulatorCanvas game={game} />
+      <InfractionWarning game={game} />
       <div className="overlay">
         <h1>Simulador de conducción</h1>
         <p>
