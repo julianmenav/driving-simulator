@@ -80,17 +80,23 @@ export interface TrafficLightSpec {
   phaseOffset: number;
 }
 
-/** One sinusoidal component of the terrain height field. */
-export interface TerrainComponent {
-  amplitude: number;
-  wavelengthX: number;
-  wavelengthZ: number;
-  phase: number;
-}
-
-/** Terrain as a sum of gentle sinusoids; see `elevationAt`. */
+/**
+ * Terrain as a coarse grid of discrete height *levels*: the ground is a flat
+ * plateau at `level × levelHeight` near each cell's centre, with smooth hill
+ * slopes only between cells of different levels (see `elevationAt`). Adjacent
+ * cells should differ by at most one level, so reaching level 2 from level 0
+ * always means climbing through a level-1 band — no cliffs.
+ */
 export interface TerrainSpec {
-  components: TerrainComponent[];
+  /** Height of one level step in m. */
+  levelHeight: number;
+  /** Side of one level cell in m. */
+  cellSize: number;
+  /** World position of the centre of cell [0][0]. */
+  originX: number;
+  originZ: number;
+  /** levels[iz][ix] = integer level of the cell (rows advance along +z). */
+  levels: number[][];
 }
 
 export interface MapManifest {

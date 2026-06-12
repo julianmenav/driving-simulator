@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { elevationAt } from '@domain/map/elevation';
 import { resolveSpeedLimit } from '@domain/map/resolveSpeedLimit';
 import type { Rect } from '@domain/map/MapManifest';
 import { buildGridCity } from './buildGridCity';
@@ -37,6 +38,23 @@ describe('buildGridCity', () => {
     const map = buildGridCity();
     const onRoad = map.roads.some((r) => contains(r, map.spawn.x, map.spawn.z));
     expect(onRoad).toBe(true);
+  });
+
+  it('terrain levels never step more than one between adjacent cells', () => {
+    const { levels } = buildGridCity().terrain;
+    for (let iz = 0; iz < levels.length; iz++) {
+      for (let ix = 0; ix < levels[iz].length; ix++) {
+        if (ix > 0) expect(Math.abs(levels[iz][ix] - levels[iz][ix - 1])).toBeLessThanOrEqual(1);
+        if (iz > 0) expect(Math.abs(levels[iz][ix] - levels[iz - 1][ix])).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('spawns on near-flat ground (no slope under the starting car)', () => {
+    const map = buildGridCity();
+    const here = elevationAt(map.terrain, map.spawn.x, map.spawn.z);
+    const ahead = elevationAt(map.terrain, map.spawn.x, map.spawn.z + 5);
+    expect(Math.abs(ahead - here)).toBeLessThan(0.2);
   });
 
   it('the spawn avenue runs north through the 30 km/h band', () => {

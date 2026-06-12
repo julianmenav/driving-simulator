@@ -101,11 +101,22 @@ export function buildGridCity(options: GridCityOptions = {}): MapManifest {
     phaseOffset: i * 4,
   }));
 
-  // Gentle rolling hills (sum of long-wavelength sinusoids).
+  // Terrain levels: 6x6 cells of plateaus (0..3 x 1.5 m), generally rising
+  // west -> east, hand-laid so adjacent cells differ by at most one level.
+  // The spawn avenue's column (west) is level 0.
+  const cellSize = 56;
   const terrain: TerrainSpec = {
-    components: [
-      { amplitude: 2.0, wavelengthX: 30, wavelengthZ: 38, phase: 0.4 },
-      { amplitude: 1.0, wavelengthX: 17, wavelengthZ: 21, phase: 1.7 },
+    levelHeight: 1.5,
+    cellSize,
+    originX: -2.5 * cellSize,
+    originZ: -2.5 * cellSize,
+    levels: [
+      [0, 0, 1, 1, 2, 2],
+      [0, 0, 1, 2, 2, 3],
+      [0, 1, 1, 2, 2, 3],
+      [0, 0, 1, 1, 2, 2],
+      [0, 1, 1, 2, 2, 2],
+      [0, 0, 1, 1, 2, 3],
     ],
   };
 

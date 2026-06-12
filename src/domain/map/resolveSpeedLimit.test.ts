@@ -5,7 +5,7 @@ import { resolveSpeedLimit } from './resolveSpeedLimit';
 const baseMap = (speedZones: MapManifest['speedZones']): MapManifest => ({
   name: 'test',
   spawn: { x: 0, z: 0, headingRad: 0 },
-  terrain: { components: [] },
+  terrain: { levelHeight: 1.5, cellSize: 100, originX: 0, originZ: 0, levels: [[0]] },
   defaultLimitKmh: 50,
   roads: [],
   speedZones,

@@ -22,13 +22,15 @@ export function CityMap({ game }: { game: Game }) {
   const manifest = game.map;
   const { terrain } = manifest;
 
-  // Terrain bounds: the city extent plus a margin of surrounding hills.
+  // Terrain bounds: the city extent plus a wide margin of surrounding land
+  // (beyond the level grid elevationAt clamps to the edge plateaus), so
+  // leaving the city means driving onto countryside, not off the world.
   const bounds = useMemo<Bounds>(() => {
     const ext =
       Math.max(
         ...manifest.roads.flatMap((r) => [Math.abs(r.x) + r.width / 2, Math.abs(r.z) + r.depth / 2]),
         50,
-      ) + 45;
+      ) + 220;
     return { minX: -ext, maxX: ext, minZ: -ext, maxZ: ext };
   }, [manifest.roads]);
 
@@ -115,12 +117,27 @@ function BuildingBlock({
   colorIndex: number;
   terrain: TerrainSpec;
 }) {
-  const baseY = elevationAt(terrain, building.x, building.z);
+  // Sample the terrain under the footprint (corners + centre): the box sinks
+  // below the lowest point so a building on a slope never floats over a gap,
+  // and its roof height is measured from the highest point.
+  const hw = building.width / 2;
+  const hd = building.depth / 2;
+  const samples = [
+    elevationAt(terrain, building.x, building.z),
+    elevationAt(terrain, building.x - hw, building.z - hd),
+    elevationAt(terrain, building.x + hw, building.z - hd),
+    elevationAt(terrain, building.x - hw, building.z + hd),
+    elevationAt(terrain, building.x + hw, building.z + hd),
+  ];
+  const bottom = Math.min(...samples) - 0.6;
+  const top = Math.max(...samples) + building.height;
+  const boxHeight = top - bottom;
+
   return (
-    <RigidBody type="fixed" colliders={false} position={[building.x, baseY + building.height / 2, building.z]}>
-      <CuboidCollider args={[building.width / 2, building.height / 2, building.depth / 2]} />
+    <RigidBody type="fixed" colliders={false} position={[building.x, (top + bottom) / 2, building.z]}>
+      <CuboidCollider args={[hw, boxHeight / 2, hd]} />
       <mesh castShadow receiveShadow>
-        <boxGeometry args={[building.width, building.height, building.depth]} />
+        <boxGeometry args={[building.width, boxHeight, building.depth]} />
         <meshStandardMaterial color={BUILDING_COLORS[colorIndex % BUILDING_COLORS.length]} />
       </mesh>
     </RigidBody>
