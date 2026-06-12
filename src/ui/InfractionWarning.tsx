@@ -15,9 +15,11 @@ export function InfractionWarning({ game }: { game: Game }) {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const off = game.events.subscribe('infraction/committed', ({ infraction }) => {
-      if (infraction.type === 'speeding') {
-        setMessage(`Exceso de velocidad · límite ${infraction.limitKmh} km/h`);
-      }
+      setMessage(
+        infraction.type === 'speeding'
+          ? `Exceso de velocidad · límite ${infraction.limitKmh} km/h`
+          : 'Semáforo en rojo',
+      );
       clearTimeout(timer);
       timer = setTimeout(() => setMessage(null), WARNING_DURATION_MS);
     });

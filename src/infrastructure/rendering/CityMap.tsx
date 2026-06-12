@@ -1,6 +1,8 @@
 import { Text } from '@react-three/drei';
 import { CuboidCollider, RigidBody } from '@react-three/rapier';
-import type { Building, Crossing, MapManifest, Prop, RoadSegment, SpeedZone } from '@domain/map/MapManifest';
+import type { Game } from '@application/createGame';
+import type { Building, Crossing, Prop, RoadSegment, SpeedZone } from '@domain/map/MapManifest';
+import { TrafficLights } from './TrafficLights';
 
 const GROUND_COLOR = '#5d7052';
 const ASPHALT_COLOR = '#3a3d42';
@@ -12,7 +14,8 @@ const BUILDING_COLORS = ['#8a8f99', '#9aa0aa', '#7c828d', '#a6abb3'];
  * buildings (with colliders), dynamic props and speed-limit signs at each
  * zone. Swapping the manifest changes the whole layout with no code change.
  */
-export function CityMap({ manifest }: { manifest: MapManifest }) {
+export function CityMap({ game }: { game: Game }) {
+  const manifest = game.map;
   return (
     <>
       {/* Flat ground: one big static collider + a green plane. */}
@@ -39,6 +42,7 @@ export function CityMap({ manifest }: { manifest: MapManifest }) {
       {manifest.speedZones.map((zone, i) => (
         <SpeedLimitSign key={`sign-${i}`} zone={zone} spawnX={manifest.spawn.x} />
       ))}
+      <TrafficLights game={game} />
     </>
   );
 }

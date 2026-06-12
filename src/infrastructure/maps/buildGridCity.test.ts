@@ -25,6 +25,14 @@ describe('buildGridCity', () => {
     expect(map.crossings.every((c) => c.x === map.spawn.x)).toBe(true);
   });
 
+  it('places northbound traffic lights along the spawn avenue', () => {
+    const map = buildGridCity();
+    expect(map.trafficLights.length).toBeGreaterThan(0);
+    expect(map.trafficLights.every((l) => l.axis === 'z' && l.travelSign === 1)).toBe(true);
+    // The spawn avenue lane band contains the spawn x.
+    expect(map.trafficLights.every((l) => l.laneMin <= map.spawn.x && map.spawn.x <= l.laneMax)).toBe(true);
+  });
+
   it('spawns the vehicle on a road', () => {
     const map = buildGridCity();
     const onRoad = map.roads.some((r) => contains(r, map.spawn.x, map.spawn.z));

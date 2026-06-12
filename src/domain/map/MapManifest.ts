@@ -57,6 +57,29 @@ export interface Prop {
   z: number;
 }
 
+/**
+ * A traffic light governing one approach to an intersection. A vehicle within
+ * the cross-axis lane band `[laneMin, laneMax]`, travelling in `travelSign`
+ * along `axis`, must not cross `stopCoord` while the light is red.
+ */
+export interface TrafficLightSpec {
+  id: string;
+  /** Pole position. */
+  x: number;
+  z: number;
+  /** Axis the governed traffic travels along. */
+  axis: 'x' | 'z';
+  /** Coordinate of the stop line on `axis`. */
+  stopCoord: number;
+  /** Direction of legal travel along `axis`. */
+  travelSign: 1 | -1;
+  /** Lane band on the cross axis that this light governs. */
+  laneMin: number;
+  laneMax: number;
+  /** Seconds offset into the green→amber→red cycle, to desync lights. */
+  phaseOffset: number;
+}
+
 export interface MapManifest {
   name: string;
   spawn: Spawn;
@@ -67,6 +90,7 @@ export interface MapManifest {
   buildings: Building[];
   props: Prop[];
   crossings: Crossing[];
+  trafficLights: TrafficLightSpec[];
   /** Future hook: URL of a glTF model to load as the map geometry. */
   gltfUrl?: string;
 }

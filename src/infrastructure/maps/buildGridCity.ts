@@ -5,6 +5,7 @@ import type {
   Prop,
   RoadSegment,
   SpeedZone,
+  TrafficLightSpec,
 } from '@domain/map/MapManifest';
 
 export interface GridCityOptions {
@@ -73,10 +74,31 @@ export function buildGridCity(options: GridCityOptions = {}): MapManifest {
     { kind: 'crate', x: avenueX - 1.6, z: spawn.z + 24 },
   ];
 
+  // Interior cross streets the spawn avenue passes through.
+  const crossStreets = lines.filter((z) => !isOuter(z));
+
   // Zebra crossings on the spawn avenue, just before each interior cross street.
-  const crossings: Crossing[] = lines
-    .filter((z) => !isOuter(z))
-    .map((z) => ({ x: avenueX, z: z - 6, width: roadWidth, depth: 3, axis: 'z' as const }));
+  const crossings: Crossing[] = crossStreets.map((z) => ({
+    x: avenueX,
+    z: z - 6,
+    width: roadWidth,
+    depth: 3,
+    axis: 'z' as const,
+  }));
+
+  // A corridor of traffic lights governing northbound avenue traffic, one per
+  // interior intersection, with spread phases so they are not all in sync.
+  const trafficLights: TrafficLightSpec[] = crossStreets.map((z, i) => ({
+    id: `av-n-${i}`,
+    x: avenueX - 6,
+    z: z - 4,
+    axis: 'z' as const,
+    stopCoord: z - 4,
+    travelSign: 1 as const,
+    laneMin: avenueX - 6,
+    laneMax: avenueX + 6,
+    phaseOffset: i * 4,
+  }));
 
   return {
     name: 'Grid City',
@@ -87,5 +109,6 @@ export function buildGridCity(options: GridCityOptions = {}): MapManifest {
     buildings,
     props,
     crossings,
+    trafficLights,
   };
 }

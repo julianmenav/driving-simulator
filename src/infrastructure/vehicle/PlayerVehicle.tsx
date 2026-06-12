@@ -100,6 +100,10 @@ export function PlayerVehicle({ game }: { game: Game }) {
 
     controller.updateVehicle(dt);
 
+    // Advance the traffic lights first, so the red-light rule sees this tick's
+    // colours when the state update below is evaluated.
+    game.signals.advance(dt);
+
     const translation = chassisRef.current?.translation();
     game.events.publish('vehicle/stateUpdated', {
       speedKmh,

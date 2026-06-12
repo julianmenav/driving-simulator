@@ -3,7 +3,9 @@ import type { GameEventBus, GameEvents } from '@domain/events/GameEvents';
 import type { MapManifest } from '@domain/map/MapManifest';
 import { resolveSpeedLimit } from '@domain/map/resolveSpeedLimit';
 import { InfractionMonitor } from '@domain/rules/InfractionMonitor';
+import { RedLightRule } from '@domain/rules/RedLightRule';
 import { SpeedLimitRule } from '@domain/rules/SpeedLimitRule';
+import { TrafficSignals } from '@domain/traffic/TrafficSignals';
 import { AutomaticGearbox } from '@domain/vehicle/Gearbox';
 import { DEFAULT_VEHICLE_SPEC } from '@domain/vehicle/VehicleSpec';
 import { PracticeMode } from './PracticeMode';
@@ -15,6 +17,7 @@ export interface Game {
   readonly gearbox: AutomaticGearbox;
   readonly monitor: InfractionMonitor;
   readonly practiceMode: PracticeMode;
+  readonly signals: TrafficSignals;
   readonly map: MapManifest;
 }
 
@@ -31,8 +34,10 @@ export interface GameDependencies {
 export function createGame({ controls, map }: GameDependencies): Game {
   const events: GameEventBus = new EventBus<GameEvents>();
   const gearbox = new AutomaticGearbox(DEFAULT_VEHICLE_SPEC, events);
+  const signals = new TrafficSignals(events, map.trafficLights);
   const speedRule = new SpeedLimitRule((s) => resolveSpeedLimit(map, s.position.x, s.position.z));
-  const monitor = new InfractionMonitor(events, [speedRule]);
+  const redLightRule = new RedLightRule(map.trafficLights, (id) => signals.colorOf(id));
+  const monitor = new InfractionMonitor(events, [speedRule, redLightRule]);
   const practiceMode = new PracticeMode(events);
-  return { events, controls, gearbox, monitor, practiceMode, map };
+  return { events, controls, gearbox, monitor, practiceMode, signals, map };
 }

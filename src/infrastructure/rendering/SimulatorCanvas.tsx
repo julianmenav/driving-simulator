@@ -25,7 +25,7 @@ export function SimulatorCanvas({ game }: { game: Game }) {
       />
       <Suspense fallback={null}>
         <Physics>
-          <CityMap manifest={game.map} />
+          <CityMap game={game} />
           <PlayerVehicle game={game} />
         </Physics>
       </Suspense>
