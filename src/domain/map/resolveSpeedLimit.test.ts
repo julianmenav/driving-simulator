@@ -10,6 +10,7 @@ const baseMap = (speedZones: MapManifest['speedZones']): MapManifest => ({
   speedZones,
   buildings: [],
   props: [],
+  crossings: [],
 });
 
 describe('resolveSpeedLimit', () => {

@@ -1,5 +1,6 @@
 import type {
   Building,
+  Crossing,
   MapManifest,
   Prop,
   RoadSegment,
@@ -15,7 +16,7 @@ export interface GridCityOptions {
   roadWidth?: number;
 }
 
-const DEFAULTS = { blocks: 3, blockSize: 40, roadWidth: 8 } as const;
+const DEFAULTS = { blocks: 5, blockSize: 40, roadWidth: 8 } as const;
 
 /**
  * Deterministic procedural city: a square grid of roads (outer ring = avenues,
@@ -72,6 +73,11 @@ export function buildGridCity(options: GridCityOptions = {}): MapManifest {
     { kind: 'crate', x: avenueX - 1.6, z: spawn.z + 24 },
   ];
 
+  // Zebra crossings on the spawn avenue, just before each interior cross street.
+  const crossings: Crossing[] = lines
+    .filter((z) => !isOuter(z))
+    .map((z) => ({ x: avenueX, z: z - 6, width: roadWidth, depth: 3, axis: 'z' as const }));
+
   return {
     name: 'Grid City',
     spawn,
@@ -80,5 +86,6 @@ export function buildGridCity(options: GridCityOptions = {}): MapManifest {
     speedZones,
     buildings,
     props,
+    crossings,
   };
 }

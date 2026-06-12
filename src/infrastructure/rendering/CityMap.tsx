@@ -1,6 +1,6 @@
 import { Text } from '@react-three/drei';
 import { CuboidCollider, RigidBody } from '@react-three/rapier';
-import type { Building, MapManifest, Prop, RoadSegment, SpeedZone } from '@domain/map/MapManifest';
+import type { Building, Crossing, MapManifest, Prop, RoadSegment, SpeedZone } from '@domain/map/MapManifest';
 
 const GROUND_COLOR = '#5d7052';
 const ASPHALT_COLOR = '#3a3d42';
@@ -26,6 +26,9 @@ export function CityMap({ manifest }: { manifest: MapManifest }) {
 
       {manifest.roads.map((road, i) => (
         <Road key={`road-${i}`} road={road} />
+      ))}
+      {manifest.crossings.map((crossing, i) => (
+        <ZebraCrossing key={`xing-${i}`} crossing={crossing} />
       ))}
       {manifest.buildings.map((building, i) => (
         <BuildingBlock key={`bld-${i}`} building={building} colorIndex={i} />
@@ -53,6 +56,34 @@ function Road({ road }: { road: RoadSegment }) {
         <boxGeometry args={alongZ ? [0.15, 0.02, road.depth] : [road.width, 0.02, 0.15]} />
         <meshStandardMaterial color={LANE_COLOR} />
       </mesh>
+    </group>
+  );
+}
+
+const CROSSING_STRIPES = 5;
+
+/** Painted zebra crossing: a row of white bars across the road. */
+function ZebraCrossing({ crossing }: { crossing: Crossing }) {
+  const alongZ = crossing.axis === 'z';
+  // Bars run across the road and repeat along the travel axis.
+  const barLength = (alongZ ? crossing.width : crossing.depth) * 0.85;
+  const span = alongZ ? crossing.depth : crossing.width;
+  const slot = span / CROSSING_STRIPES;
+  const bar = slot * 0.55;
+  return (
+    <group position={[crossing.x, 0.04, crossing.z]}>
+      {Array.from({ length: CROSSING_STRIPES }, (_, i) => {
+        const offset = -span / 2 + (i + 0.5) * slot;
+        const args: [number, number, number] = alongZ
+          ? [barLength, 0.02, bar]
+          : [bar, 0.02, barLength];
+        return (
+          <mesh key={i} position={[alongZ ? 0 : offset, 0, alongZ ? offset : 0]}>
+            <boxGeometry args={args} />
+            <meshStandardMaterial color={LANE_COLOR} />
+          </mesh>
+        );
+      })}
     </group>
   );
 }

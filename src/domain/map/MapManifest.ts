@@ -45,6 +45,12 @@ export interface Building extends Rect {
   height: number;
 }
 
+/** A pedestrian (zebra) crossing painted across a road. */
+export interface Crossing extends Rect {
+  /** Axis the road runs along; the stripes lie perpendicular to it. */
+  axis: 'x' | 'z';
+}
+
 export interface Prop {
   kind: 'cone' | 'crate';
   x: number;
@@ -60,6 +66,7 @@ export interface MapManifest {
   speedZones: SpeedZone[];
   buildings: Building[];
   props: Prop[];
+  crossings: Crossing[];
   /** Future hook: URL of a glTF model to load as the map geometry. */
   gltfUrl?: string;
 }

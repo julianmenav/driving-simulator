@@ -11,8 +11,18 @@ describe('buildGridCity', () => {
     const map = buildGridCity();
     expect(map.defaultLimitKmh).toBe(50);
     expect(map.roads.length).toBeGreaterThan(0);
-    expect(map.buildings.length).toBe(9); // 3x3 blocks
+    expect(map.buildings.length).toBe(25); // 5x5 blocks
     expect(map.speedZones.some((z) => z.limitKmh === 30)).toBe(true);
+  });
+
+  it('scales the building grid with the blocks option', () => {
+    expect(buildGridCity({ blocks: 3 }).buildings.length).toBe(9);
+  });
+
+  it('places zebra crossings on the spawn avenue', () => {
+    const map = buildGridCity();
+    expect(map.crossings.length).toBeGreaterThan(0);
+    expect(map.crossings.every((c) => c.x === map.spawn.x)).toBe(true);
   });
 
   it('spawns the vehicle on a road', () => {
