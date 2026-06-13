@@ -20,8 +20,14 @@ const HALF: [number, number, number] = [0.82, 0.55, 1.7];
 const RIDE_HEIGHT = HALF[1] + 0.05;
 /** Max vertical speed used to follow the terrain over hills (m/s). */
 const MAX_CLIMB = 6;
-/** Relative impact speed above which a contact counts as a crash (m/s). */
-const CRASH_SPEED = 3;
+/**
+ * Relative impact speed above which a contact counts as a crash (m/s). Kept low
+ * on purpose: any real touch hands the body entirely to physics for a few
+ * seconds, so a bumped car stops driving and bounces, and the player can shove
+ * a stopped one — only resting/grazing contact (below this) stays under
+ * velocity control. See the control loop below.
+ */
+const CRASH_SPEED = 1;
 
 const CAR_COLORS = ['#2e6f9e', '#3e8e5a', '#b58b2c', '#7d4f9e', '#a8453a', '#3a3f47', '#c06a3a', '#4a8f8f'];
 
@@ -143,7 +149,9 @@ export function TrafficCars({ game }: { game: Game }) {
 
       const cmd = drivers[i].update({ x: pos.x, z: pos.z, headingRad: yawOf(body) }, dt, others);
       if (!cmd.controlActive) {
-        // Crashed: leave the body to physics so the impact plays out.
+        // Crashed: leave the body entirely to physics so the impact plays out
+        // (bounce, spin, get shoved). The recovery timer pauses driving; ground
+        // friction + damping settle it before it re-routes to the nearest road.
         body.wakeUp();
         continue;
       }

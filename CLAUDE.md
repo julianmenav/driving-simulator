@@ -89,7 +89,34 @@ Phase 1 implementation order (each step yields a visible result):
 
 - ✅ NPC traffic cars (jun 2026): autonomous cars that share the road, fully **map-agnostic** (derived from the manifest, so a new map populates with zero code).
   - **Domain** (`domain/traffic/`): `RoadGraph.ts` turns `manifest.roads` into a navigable lane graph — intersections of crossing axis-aligned roads become nodes, the sections between them become directed **right-hand lane** edges (offset to a fraction of road width, drive-on-the-right). Pure/deterministic like `elevationAt`/`resolveSpeedLimit`; `nearestNode`/`chooseEdge` (turn weighted toward going straight, never a U-turn unless dead-end) + tests. `NpcDriver.ts` is the per-car **brain**: a pure state machine (`cruising | waiting | crashed | rejoining`) that follows lanes, **stops at red/amber stop lines** (reuses `TrafficLightSpec` + `signals.colorOf`, same data the player's `RedLightRule` reads), **yields** by braking to a gap behind any car/player in its forward corridor (so it only advances when the next step is clear), and on impact goes **limp → waits `recoverySeconds` → re-routes to the nearest node**. Injected RNG keeps it testable; speeds clamp to road type (residential 7 / avenue 11 m/s). Tests cover cruise/turn, light-stop, yield-without-overrun, crash→recover.
-  - **Infrastructure** (`infrastructure/vehicle/TrafficCars.tsx`): one dynamic Rapier body per car, **velocity-controlled** each `useBeforePhysicsStep` (horizontal = heading×speed; a clamped vertical term tracks `elevationAt` so they glide over the hills; X/Z rotations locked so they stay upright). Control is **released while crashed** so the contact solver produces a real bounce, then resumes. A contact counts as a crash only when the other body is a car (`userData.kind` `player`/`npc`) **and** relative speed > 3 m/s — so terrain/kerbs/buildings and gentle nudges never trip it. Player chassis tagged `userData={{kind:'player'}}`; player position read off `vehicle/stateUpdated` for NPC avoidance. `createGame` exposes `game.roadGraph = buildRoadGraph(map.roads)`; mounted in `SimulatorCanvas` (NPCs are layer 0 → visible in the mirrors). Verified headless: 12 cars driving in-lane at the right per-road speeds, stopping at reds, crashing+recovering. **Deferred (unchanged seams):** pedestrian NPCs at crossings, intersection right-of-way among NPCs (perpendicular crossers can still clip and recover), hitting an NPC as a scored infraction.
+  - **Infrastructure** (`infrastructure/vehicle/TrafficCars.tsx`): one dynamic Rapier body per car, **velocity-controlled** each `useBeforePhysicsStep` (horizontal = heading×speed; a clamped vertical term tracks `elevationAt` so they glide over the hills; X/Z rotations locked so they stay upright). Control is **released while crashed** so the contact solver produces a real bounce, then resumes. A contact counts as a crash only when the other body is a car (`userData.kind` `player`/`npc`) **and** relative speed > 3 m/s — so terrain/kerbs/buildings and gentle nudges never trip it. Player chassis tagged `userData={{kind:'player'}}`; player position read off `vehicle/stateUpdated` for NPC avoidance. `createGame` exposes `game.roadGraph = buildRoadGraph(map.roads)`; mounted in `SimulatorCanvas` (NPCs are layer 0 → visible in the mirrors). Verified headless: 12 cars driving in-lane at the right per-road speeds, stopping at reds, crashing+recovering. **Deferred (unchanged seams):** pedestrian NPCs at crossings, intersection right-of-way among NPCs (perpendicular crossers can still clip and recover), hitting an NPC as a scored infraction, and the richer **scalable road model** below.
+  - **Collision feel tuning (jun 2026 feedback):** the crash threshold was lowered (3 → 1 m/s relative) so *any* real touch — not just a fast one — hands the body fully to physics for the recovery window. The earlier behaviour hard-set velocity/rotation every frame *unless* crashed, which made a controlled NPC an immovable powered wall: the player couldn't shove a stopped car, yet a driving NPC rammed the player with full momentum. With the lower threshold a bumped car goes limp (so it visibly stops driving and bounces), and while limp it is an ordinary dynamic body, so pushes are mutual and a stopped car can be shoved (verified headless: an impulse shoves a limp car ~8 m, then it re-routes). Sub-1-m/s grazing still stays under control (no spurious freezes in queues).
+
+## Scalable road model (design note — not built yet, per Julián's feedback jun 2026)
+
+Today a road is geometry + a coarse `type` (`avenue`/`residential`), and `buildRoadGraph`
+hard-codes one right-hand lane per direction with uniform rules; `NpcDriver` applies the
+same behaviour everywhere. To grow toward real circulation rules, roads should become
+richer **domain data** (still pure manifest, like `VehicleSpec`/`TerrainSpec`) describing
+how traffic may use them, e.g.:
+
+- **Senses:** `oneWay` vs two-way (and which direction[s] exist).
+- **Lanes:** `lanesPerDirection` → multi-lane, keep-right, an overtaking lane.
+- **Markings:** centre line `solid | dashed` → lane-crossing / overtaking allowed or not.
+- **Class & priority:** speed defaults (already via `ROAD_LIMITS`) + right-of-way rank at
+  uncontrolled junctions.
+
+The seam is already in the right place: `buildRoadGraph` is the **single** translator from
+road data → lane edges, so it would emit N lane edges per direction at the correct offsets,
+tagging each with the rules above; `NpcDriver` reads that metadata to pick a lane (keep
+right; pull left to overtake only on a dashed line into a clear faster lane) and to resolve
+**intersection right-of-way** (today there is none — perpendicular crossers clip and
+recover; a yield resolver keyed off road priority + light presence would ask "do I have
+right of way entering edge E at node N?", mirroring the existing red-light stop check). The
+pipeline stays fully data-driven: a new map sets per-road attributes and `buildGridCity`
+picks sensible defaults — **zero NPC/renderer code changes**, the same way lights/crossings
+scaled map-wide. So: the architecture is *not* the limitation; the road data model and the
+generator are simply minimal today, exactly as with the earlier "single street" feedback.
 
 ## Julián's gameplay feedback (Jun 2026)
 
@@ -100,6 +127,7 @@ Phase 1 implementation order (each step yields a visible result):
 5. (Detected during verification) The car yawed under hard braking (locked rear axle). → 100/60 front/rear brake split and maxBrakeForce 60→45. A slight residual drift remains under full braking.
 6. (Map round, jun 2026) Sinusoidal terrain read as unrealistic waviness → replaced with **discrete height levels** (plateaus + hills only between levels, see status). Buildings floated over slope gaps → bases sink below the lowest footprint point. Zebra stripes were rotated 90° from reality → bars now parallel to the road, repeating across its width. Lights/crossings existed on a single street → **the framework was not the limitation** (manifest → renderer → rules is fully data-driven); the generator was minimal. Fixed by making the generator intersection-first.
 7. (Detected during verification, jun 2026) With heightfield terrain the mesh ended ~45 m past the roads, so leaving the city meant falling off the world → terrain margin widened to 220 m (elevationAt clamps to edge plateaus beyond the level grid).
+8. (NPC traffic round, jun 2026) (a) Cars should keep to the right lane and circulation rules should differ per road kind (one/two-way, solid/dashed line) — noted as the **scalable road model** design above, not built yet; the architecture (manifest → `buildRoadGraph` → `NpcDriver`) is the right seam, the road data model is just minimal. (b) NPCs didn't stop when crashed/touched and (c) a stopped NPC couldn't be pushed while NPCs shoved the player easily → both were the hard per-frame velocity/rotation control making controlled cars immovable walls; fixed by lowering the crash threshold to 1 m/s so any touch hands the body to physics (see NPC status entry).
 
 ## Commands and environment
 
