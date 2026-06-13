@@ -3,6 +3,8 @@ import type { Game } from '@application/createGame';
 import type { TrafficLightSpec } from '@domain/map/MapManifest';
 import { elevationAt } from '@domain/map/elevation';
 import type { TrafficColor } from '@domain/traffic/TrafficSignals';
+import { Glow } from './environment/Glow';
+import { useLightsOn } from './environment/environmentStore';
 
 const LAMP = {
   red: { y: 1.0, on: '#ff3b30' },
@@ -24,6 +26,7 @@ export function TrafficLights({ game }: { game: Game }) {
 
 function Light({ game, light }: { game: Game; light: TrafficLightSpec }) {
   const [color, setColor] = useState<TrafficColor>(game.signals.colorOf(light.id));
+  const lightsOn = useLightsOn();
 
   useEffect(() => {
     return game.events.subscribe('traffic/lightChanged', ({ id, color: c }) => {
@@ -52,14 +55,19 @@ function Light({ game, light }: { game: Game; light: TrafficLightSpec }) {
         {(Object.keys(LAMP) as TrafficColor[]).map((c) => {
           const lit = c === color;
           return (
-            <mesh key={c} position={[0, LAMP[c].y - 0.7, 0.16]}>
-              <sphereGeometry args={[0.13, 16, 16]} />
-              <meshStandardMaterial
-                color={lit ? LAMP[c].on : OFF}
-                emissive={lit ? LAMP[c].on : '#000000'}
-                emissiveIntensity={lit ? 1.4 : 0}
-              />
-            </mesh>
+            <group key={c}>
+              <mesh position={[0, LAMP[c].y - 0.7, 0.16]}>
+                <sphereGeometry args={[0.13, 16, 16]} />
+                <meshStandardMaterial
+                  color={lit ? LAMP[c].on : OFF}
+                  emissive={lit ? LAMP[c].on : '#000000'}
+                  emissiveIntensity={lit ? (lightsOn ? 2.4 : 1.4) : 0}
+                />
+              </mesh>
+              {lit && lightsOn && (
+                <Glow position={[0, LAMP[c].y - 0.7, 0.3]} color={LAMP[c].on} size={1.0} opacity={0.9} />
+              )}
+            </group>
           );
         })}
       </group>

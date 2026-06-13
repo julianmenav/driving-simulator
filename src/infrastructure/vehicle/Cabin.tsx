@@ -5,6 +5,7 @@ import { DoubleSide, type Group } from 'three';
 import type { Game } from '@application/createGame';
 import type { Gear } from '@domain/vehicle/Gear';
 import { DEFAULT_VEHICLE_SPEC as spec } from '@domain/vehicle/VehicleSpec';
+import { useLightsOn } from '@infrastructure/rendering/environment/environmentStore';
 
 /** Visual lock: wheel rotation (rad) at full steering — about 1.4 turns total. */
 const WHEEL_VISUAL_LOCK = 2.2;
@@ -27,10 +28,11 @@ interface CabinProps {
 export function Cabin({ game, steeringRef }: CabinProps) {
   const rootRef = useRef<Group>(null);
   const wheelRef = useRef<Group>(null);
+  const night = useLightsOn();
 
   useEffect(() => {
     rootRef.current?.traverse((o) => o.layers.set(1));
-  }, []);
+  }, [night]);
 
   // The steering wheel turns with the smoothed steering (per-frame, no React).
   useFrame(() => {
@@ -43,9 +45,17 @@ export function Cabin({ game, steeringRef }: CabinProps) {
     <group ref={rootRef}>
       {/* The sun (layer 0) does not light layer-1 geometry, so the cabin needs
           its own rig. These lights are layer 1 too (via the traverse above),
-          so they only light the interior and never leak into the mirrors. */}
-      <hemisphereLight args={['#e3ecf4', '#54585f', 1.25]} />
-      <directionalLight position={[5, 9, 4]} intensity={2.2} color="#fff3e2" />
+          so they only light the interior and never leak into the mirrors. At
+          night the rig dims to cool moonlight, with a soft warm cabin glow. */}
+      <hemisphereLight
+        args={night ? ['#26303f', '#15171c', 0.55] : ['#e3ecf4', '#54585f', 1.25]}
+      />
+      <directionalLight
+        position={[5, 9, 4]}
+        intensity={night ? 0.5 : 2.2}
+        color={night ? '#aebbd6' : '#fff3e2'}
+      />
+      {night && <pointLight position={[0, 0.95, 0.55]} intensity={2.5} distance={2.6} decay={2} color="#ffc79a" />}
 
       {/* Dashboard: vertical fascia + sloped matte top spanning the cabin */}
       <mesh position={[0, 0.52, 0.95]}>

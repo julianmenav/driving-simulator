@@ -57,6 +57,12 @@ export interface Prop {
   z: number;
 }
 
+/** A streetlight pole. Purely cosmetic; lit only at night (see the environment). */
+export interface StreetLightSpec {
+  x: number;
+  z: number;
+}
+
 /**
  * A traffic light governing one approach to an intersection. A vehicle within
  * the cross-axis lane band `[laneMin, laneMax]`, travelling in `travelSign`
@@ -111,6 +117,7 @@ export interface MapManifest {
   props: Prop[];
   crossings: Crossing[];
   trafficLights: TrafficLightSpec[];
+  streetLights: StreetLightSpec[];
   /** Future hook: URL of a glTF model to load as the map geometry. */
   gltfUrl?: string;
 }

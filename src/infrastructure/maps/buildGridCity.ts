@@ -5,6 +5,7 @@ import type {
   Prop,
   RoadSegment,
   SpeedZone,
+  StreetLightSpec,
   TerrainSpec,
   TrafficLightSpec,
 } from '@domain/map/MapManifest';
@@ -144,6 +145,25 @@ export function buildGridCity(options: GridCityOptions = {}): MapManifest {
     });
   });
 
+  // Streetlights: one per road segment between consecutive junctions, set just
+  // off the kerb. Sides alternate for a natural staggered look. Like crossings
+  // and traffic lights, this is plain manifest data, so any map populates with
+  // no renderer change.
+  const streetLights: StreetLightSpec[] = [];
+  const lampSide = roadWidth / 2 + 1.2;
+  lines.forEach((X, xi) => {
+    for (let i = 0; i < lines.length - 1; i++) {
+      const z = (lines[i] + lines[i + 1]) / 2;
+      streetLights.push({ x: X + ((xi + i) % 2 === 0 ? lampSide : -lampSide), z });
+    }
+  });
+  lines.forEach((Z, zi) => {
+    for (let i = 0; i < lines.length - 1; i++) {
+      const x = (lines[i] + lines[i + 1]) / 2;
+      streetLights.push({ x, z: Z + ((zi + i) % 2 === 0 ? lampSide : -lampSide) });
+    }
+  });
+
   // Terrain levels: 6x6 cells of plateaus (0..3 x 1.5 m), generally rising
   // west -> east, hand-laid so adjacent cells differ by at most one level.
   // The spawn avenue's column (west) is level 0.
@@ -174,5 +194,6 @@ export function buildGridCity(options: GridCityOptions = {}): MapManifest {
     props,
     crossings,
     trafficLights,
+    streetLights,
   };
 }

@@ -8,12 +8,13 @@ import {
   useRapier,
   type RapierRigidBody,
 } from '@react-three/rapier';
-import { useEffect, useRef } from 'react';
-import { type Group, type PerspectiveCamera as ThreePerspectiveCamera } from 'three';
+import { useEffect, useMemo, useRef } from 'react';
+import { Object3D, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 import type { Game } from '@application/createGame';
 import { elevationAt } from '@domain/map/elevation';
 import { DEFAULT_VEHICLE_SPEC as spec } from '@domain/vehicle/VehicleSpec';
 import { Cabin } from '@infrastructure/vehicle/Cabin';
+import { useLightsOn } from '@infrastructure/rendering/environment/environmentStore';
 import { RearViewMirror } from '@infrastructure/rendering/RearViewMirror';
 
 const WHEEL_DIRECTION = { x: 0, y: -1, z: 0 };
@@ -170,6 +171,8 @@ export function PlayerVehicle({ game }: { game: Game }) {
             </mesh>
           </group>
         ))}
+        {/* Headlights: lit at night, casting forward (+z) onto the world. */}
+        <Headlights frontZ={hz} />
       </group>
 
       {/* First-person interior (dashboard, wheel, doors, glass...) on layer 1 */}
@@ -188,5 +191,46 @@ export function PlayerVehicle({ game }: { game: Game }) {
           the low wheel, looking towards +z */}
       <PerspectiveCamera ref={cameraRef} makeDefault fov={80} near={0.1} far={500} position={[0.3, 1.1, 0.12]} rotation={[0, Math.PI, 0]} />
     </RigidBody>
+  );
+}
+
+/**
+ * Front headlights, lit only at night: a cosmetic glowing lens plus a real
+ * spotlight per side that casts the beam forward (+z) onto the world. The beam
+ * target is a child object ahead of the car, so it follows the car's heading.
+ */
+function Headlights({ frontZ }: { frontZ: number }) {
+  const on = useLightsOn();
+  const color = '#fff2d2';
+  const target = useMemo(() => {
+    const object = new Object3D();
+    object.position.set(0, -3, frontZ + 36);
+    return object;
+  }, [frontZ]);
+
+  return (
+    <>
+      <primitive object={target} />
+      {[-0.62, 0.62].map((x) => (
+        <group key={x}>
+          <mesh position={[x, 0.06, frontZ + 0.02]}>
+            <boxGeometry args={[0.26, 0.16, 0.06]} />
+            <meshStandardMaterial color="#20242b" emissive={on ? color : '#000000'} emissiveIntensity={on ? 2 : 0} />
+          </mesh>
+          {on && (
+            <spotLight
+              position={[x, 0.12, frontZ]}
+              target={target}
+              color={color}
+              intensity={60}
+              distance={50}
+              angle={0.6}
+              penumbra={0.45}
+              decay={1.3}
+            />
+          )}
+        </group>
+      ))}
+    </>
   );
 }

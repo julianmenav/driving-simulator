@@ -4,7 +4,9 @@ import { useMemo } from 'react';
 import type { Game } from '@application/createGame';
 import type { Building, Crossing, Prop, RoadSegment, SpeedZone, TerrainSpec } from '@domain/map/MapManifest';
 import { elevationAt } from '@domain/map/elevation';
+import { BuildingWindows } from './BuildingWindows';
 import { buildSurfaceGeometry, rectBounds, type Bounds } from './drape';
+import { StreetLights } from './StreetLights';
 import { Terrain } from './Terrain';
 import { TrafficLights } from './TrafficLights';
 
@@ -53,6 +55,7 @@ export function CityMap({ game }: { game: Game }) {
       {manifest.speedZones.map((zone, i) => (
         <SpeedLimitSign key={`sign-${i}`} zone={zone} spawnX={manifest.spawn.x} terrain={terrain} />
       ))}
+      <StreetLights lights={manifest.streetLights} terrain={terrain} />
       <TrafficLights game={game} />
     </>
   );
@@ -137,15 +140,27 @@ function BuildingBlock({
   const bottom = Math.min(...samples) - 0.6;
   const top = Math.max(...samples) + building.height;
   const boxHeight = top - bottom;
+  const centerY = (top + bottom) / 2;
 
   return (
-    <RigidBody type="fixed" colliders={false} position={[building.x, (top + bottom) / 2, building.z]}>
-      <CuboidCollider args={[hw, boxHeight / 2, hd]} />
-      <mesh castShadow receiveShadow>
-        <boxGeometry args={[building.width, boxHeight, building.depth]} />
-        <meshStandardMaterial color={BUILDING_COLORS[colorIndex % BUILDING_COLORS.length]} />
-      </mesh>
-    </RigidBody>
+    <>
+      <RigidBody type="fixed" colliders={false} position={[building.x, centerY, building.z]}>
+        <CuboidCollider args={[hw, boxHeight / 2, hd]} />
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[building.width, boxHeight, building.depth]} />
+          <meshStandardMaterial color={BUILDING_COLORS[colorIndex % BUILDING_COLORS.length]} />
+        </mesh>
+      </RigidBody>
+      <BuildingWindows
+        centerX={building.x}
+        centerY={centerY}
+        centerZ={building.z}
+        width={building.width}
+        depth={building.depth}
+        boxHeight={boxHeight}
+        seed={colorIndex}
+      />
+    </>
   );
 }
 
