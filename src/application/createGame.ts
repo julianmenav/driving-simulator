@@ -5,6 +5,7 @@ import { resolveSpeedLimit } from '@domain/map/resolveSpeedLimit';
 import { InfractionMonitor } from '@domain/rules/InfractionMonitor';
 import { RedLightRule } from '@domain/rules/RedLightRule';
 import { SpeedLimitRule } from '@domain/rules/SpeedLimitRule';
+import { buildRoadGraph, type RoadGraph } from '@domain/traffic/RoadGraph';
 import { TrafficSignals } from '@domain/traffic/TrafficSignals';
 import { AutomaticGearbox } from '@domain/vehicle/Gearbox';
 import { DEFAULT_VEHICLE_SPEC } from '@domain/vehicle/VehicleSpec';
@@ -19,6 +20,8 @@ export interface Game {
   readonly practiceMode: PracticeMode;
   readonly signals: TrafficSignals;
   readonly map: MapManifest;
+  /** Navigable lane graph derived from the map, used by the NPC traffic. */
+  readonly roadGraph: RoadGraph;
 }
 
 export interface GameDependencies {
@@ -39,5 +42,6 @@ export function createGame({ controls, map }: GameDependencies): Game {
   const redLightRule = new RedLightRule(map.trafficLights, (id) => signals.colorOf(id));
   const monitor = new InfractionMonitor(events, [speedRule, redLightRule]);
   const practiceMode = new PracticeMode(events);
-  return { events, controls, gearbox, monitor, practiceMode, signals, map };
+  const roadGraph = buildRoadGraph(map.roads);
+  return { events, controls, gearbox, monitor, practiceMode, signals, map, roadGraph };
 }

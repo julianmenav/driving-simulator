@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import type { Game } from '@application/createGame';
 import { CityMap } from './CityMap';
 import { PlayerVehicle } from '@infrastructure/vehicle/PlayerVehicle';
+import { TrafficCars } from '@infrastructure/vehicle/TrafficCars';
 
 export function SimulatorCanvas({ game }: { game: Game }) {
   return (
@@ -27,6 +28,7 @@ export function SimulatorCanvas({ game }: { game: Game }) {
         <Physics>
           <CityMap game={game} />
           <PlayerVehicle game={game} />
+          <TrafficCars game={game} />
         </Physics>
       </Suspense>
     </Canvas>

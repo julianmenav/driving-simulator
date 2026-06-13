@@ -139,6 +139,7 @@ export function PlayerVehicle({ game }: { game: Game }) {
       position={[spawn.x, spawnY, spawn.z]}
       rotation={[0, spawn.headingRad, 0]}
       canSleep={false}
+      userData={{ kind: 'player' }}
     >
       <CuboidCollider args={[hx, hy, hz]} mass={spec.chassisMass} />
 
