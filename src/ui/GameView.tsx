@@ -29,6 +29,12 @@ export function GameView({
 
   const [game, setGame] = useState<Game | null>(null);
 
+  // Some maps (the circuit) are always night and hide the day/night toggle.
+  const lockedNight = game?.map.lockedNight ?? false;
+  useEffect(() => {
+    if (lockedNight) useEnvironmentStore.getState().setPhase('night');
+  }, [lockedNight]);
+
   useEffect(() => {
     let alive = true;
     setGame(null);
@@ -69,9 +75,11 @@ export function GameView({
         </p>
       </div>
       <div className="game-buttons">
-        <button className="env-toggle" onClick={toggle} title="Cambiar día/noche">
-          {phase === 'night' ? '☀️ Día' : '🌙 Noche'}
-        </button>
+        {!lockedNight && (
+          <button className="env-toggle" onClick={toggle} title="Cambiar día/noche">
+            {phase === 'night' ? '☀️ Día' : '🌙 Noche'}
+          </button>
+        )}
         <button className="env-toggle" onClick={quit} title="Volver al menú">
           ☰ Menú
         </button>

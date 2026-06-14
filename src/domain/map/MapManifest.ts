@@ -105,6 +105,24 @@ export interface TerrainSpec {
   levels: number[][];
 }
 
+/** A point on the circuit centreline (ground plane). */
+export interface CircuitPoint {
+  x: number;
+  z: number;
+}
+
+/**
+ * A closed race circuit defined by its centreline: the control points are
+ * smoothed into a looping curve (see `sampleCircuit`), so spacing/angles between
+ * them set how strong each corner is. Pure data, like the rest of the manifest;
+ * the renderer drapes a ribbon of `width` onto the terrain.
+ */
+export interface CircuitSpec {
+  controlPoints: CircuitPoint[];
+  /** Track width in m. */
+  width: number;
+}
+
 export interface MapManifest {
   name: string;
   spawn: Spawn;
@@ -118,6 +136,10 @@ export interface MapManifest {
   crossings: Crossing[];
   trafficLights: TrafficLightSpec[];
   streetLights: StreetLightSpec[];
+  /** Optional closed race circuit (instead of/alongside the grid roads). */
+  circuit?: CircuitSpec;
+  /** When true the map is always night and the day/night toggle is hidden. */
+  lockedNight?: boolean;
   /** Future hook: URL of a glTF model to load as the map geometry. */
   gltfUrl?: string;
 }

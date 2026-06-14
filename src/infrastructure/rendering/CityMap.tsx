@@ -5,6 +5,7 @@ import type { Game } from '@application/createGame';
 import type { Building, Crossing, Prop, RoadSegment, SpeedZone, TerrainSpec } from '@domain/map/MapManifest';
 import { elevationAt } from '@domain/map/elevation';
 import { BuildingWindows } from './BuildingWindows';
+import { Circuit } from './Circuit';
 import { buildSurfaceGeometry, rectBounds, type Bounds } from './drape';
 import { StreetLights } from './StreetLights';
 import { Terrain } from './Terrain';
@@ -31,15 +32,17 @@ export function CityMap({ game }: { game: Game }) {
     const ext =
       Math.max(
         ...manifest.roads.flatMap((r) => [Math.abs(r.x) + r.width / 2, Math.abs(r.z) + r.depth / 2]),
+        ...(manifest.circuit?.controlPoints.flatMap((p) => [Math.abs(p.x), Math.abs(p.z)]) ?? []),
         50,
       ) + 220;
     return { minX: -ext, maxX: ext, minZ: -ext, maxZ: ext };
-  }, [manifest.roads]);
+  }, [manifest.roads, manifest.circuit]);
 
   return (
     <>
       <Terrain terrain={terrain} bounds={bounds} />
 
+      {manifest.circuit && <Circuit circuit={manifest.circuit} terrain={terrain} />}
       {manifest.roads.map((road, i) => (
         <Road key={`road-${i}`} road={road} terrain={terrain} />
       ))}
