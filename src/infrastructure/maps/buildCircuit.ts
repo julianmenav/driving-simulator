@@ -13,7 +13,9 @@ import type {
  * curves, a tight esse, a hairpin and short straights on purpose (the brief was
  * "strong curves, some not so strong"). Catmull-Rom smooths them (`sampleCircuit`).
  */
-const CONTROL_POINTS: CircuitSpec['controlPoints'] = [
+/** Bigger track => more room for hills and distinct corners (jun 2026 feedback). */
+const SCALE = 1.5;
+const RAW_POINTS: CircuitSpec['controlPoints'] = [
   { x: 80, z: -70 }, // start/finish — main straight begins
   { x: 85, z: 20 }, // long gentle right straight
   { x: 70, z: 70 }, // turn 1: sweeping
@@ -28,8 +30,9 @@ const CONTROL_POINTS: CircuitSpec['controlPoints'] = [
   { x: 10, z: -85 }, // bottom straight
   { x: 50, z: -85 }, // kink back toward start
 ];
+const CONTROL_POINTS: CircuitSpec['controlPoints'] = RAW_POINTS.map((p) => ({ x: p.x * SCALE, z: p.z * SCALE }));
 
-const TRACK_WIDTH = 12;
+const TRACK_WIDTH = 14;
 const HALF = TRACK_WIDTH / 2;
 
 /** Deterministic 0..1 hash of two integers (stable building heights/layout). */
@@ -37,6 +40,42 @@ function hash(i: number, j: number): number {
   let h = (Math.imul(i, 73856093) ^ Math.imul(j, 19349663)) >>> 0;
   h = (h ^ (h >>> 13)) >>> 0;
   return h / 4294967296;
+}
+
+/**
+ * A coarse grid of gentle hills: a low-frequency field rounded to integer levels,
+ * then relaxed so neighbours never differ by more than one level (the terrain
+ * invariant — no cliffs, climbs spread over a level-1 band).
+ */
+function buildHills(size: number, maxLevel: number): number[][] {
+  const levels = Array.from({ length: size }, (_, iz) =>
+    Array.from({ length: size }, (_, ix) => {
+      const u = ix / (size - 1);
+      const v = iz / (size - 1);
+      const f = Math.sin(u * Math.PI * 1.5) * Math.cos(v * Math.PI * 1.3) + 0.5 * Math.sin((u + v) * Math.PI * 2);
+      return Math.max(0, Math.min(maxLevel, Math.round(((f + 1.5) / 3) * maxLevel)));
+    }),
+  );
+  for (let pass = 0; pass < size * 2; pass++) {
+    let changed = false;
+    for (let iz = 0; iz < size; iz++) {
+      for (let ix = 0; ix < size; ix++) {
+        const neigh = [
+          ix > 0 ? levels[iz][ix - 1] : 0,
+          ix < size - 1 ? levels[iz][ix + 1] : 0,
+          iz > 0 ? levels[iz - 1][ix] : 0,
+          iz < size - 1 ? levels[iz + 1][ix] : 0,
+        ];
+        const maxN = Math.max(...neigh);
+        if (levels[iz][ix] > maxN + 1) {
+          levels[iz][ix] = maxN + 1;
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+  }
+  return levels;
 }
 
 /** Minimum distance from a point to the sampled centreline. */
@@ -60,13 +99,13 @@ export function buildCircuit(): MapManifest {
   const circuit: CircuitSpec = { controlPoints: CONTROL_POINTS, width: TRACK_WIDTH };
   const samples = sampleCircuit(circuit, 16);
 
-  // Flat terrain: a single level everywhere (elevationAt clamps beyond the grid).
+  // Gentle rolling hills under the whole track (the ribbon drapes onto them).
   const terrain: TerrainSpec = {
-    levelHeight: 1.5,
-    cellSize: 50,
-    originX: -250,
-    originZ: -250,
-    levels: Array.from({ length: 11 }, () => Array.from({ length: 11 }, () => 0)),
+    levelHeight: 1.3,
+    cellSize: 60,
+    originX: -300,
+    originZ: -300,
+    levels: buildHills(11, 2),
   };
 
   const start = samples[0];
@@ -78,8 +117,8 @@ export function buildCircuit(): MapManifest {
 
   // City buildings on a grid, skipping any too close to the track or the spawn.
   const buildings: Building[] = [];
-  const STEP = 30;
-  const REACH = 135;
+  const STEP = 32;
+  const REACH = 200;
   for (let i = -Math.floor(REACH / STEP); i <= Math.floor(REACH / STEP); i++) {
     for (let j = -Math.floor(REACH / STEP); j <= Math.floor(REACH / STEP); j++) {
       const r = hash(i + 100, j + 100);

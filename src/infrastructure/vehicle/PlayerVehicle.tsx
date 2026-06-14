@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Object3D, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 import type { Game } from '@application/createGame';
 import { elevationAt } from '@domain/map/elevation';
+import { distanceToCircuit, sampleCircuit } from '@domain/map/circuit';
 import { Cabin } from '@infrastructure/vehicle/Cabin';
 import { useLightsOn } from '@infrastructure/rendering/environment/environmentStore';
 import { RearViewMirror } from '@infrastructure/rendering/RearViewMirror';
@@ -22,6 +23,8 @@ const WHEEL_AXLE = { x: -1, y: 0, z: 0 };
 const FRONT_WHEELS = [0, 1];
 const REAR_WHEELS = [2, 3];
 const WHEEL_WIDTH = 0.26;
+/** Off-track (grass) horizontal velocity shed per second — firm penalty (caps full-throttle grass ~13 km/h), no dead stop. */
+const GRASS_DAMP = 0.8;
 
 /**
  * Player vehicle: dynamic chassis + Rapier DynamicRayCastVehicleController,
@@ -32,6 +35,15 @@ const WHEEL_WIDTH = 0.26;
 export function PlayerVehicle({ game }: { game: Game }) {
   // The player's chosen car spec (car-selection seam); stable per game instance.
   const spec = game.vehicleSpec;
+
+  // On a circuit, leaving the asphalt onto the grass drags the car down. The
+  // centreline samples are precomputed once; off-track is just distance > the
+  // track half-width (+ a little for the kerbs).
+  const circuitSamples = useMemo(
+    () => (game.map.circuit ? sampleCircuit(game.map.circuit) : null),
+    [game.map.circuit],
+  );
+  const offTrackRadius = (game.map.circuit?.width ?? 0) / 2 + 0.8;
   const { world } = useRapier();
   const chassisRef = useRef<RapierRigidBody>(null);
   const controllerRef = useRef<DynamicRayCastVehicleController | null>(null);
@@ -98,6 +110,16 @@ export function PlayerVehicle({ game }: { game: Game }) {
       if (magnitude > 0.5) {
         const k = spec.aeroDragCoefficient * magnitude * dt;
         chassis.applyImpulse({ x: -k * velocity.x, y: -k * velocity.y, z: -k * velocity.z }, true);
+      }
+
+      // Grass drag: off the circuit asphalt, shed horizontal speed fast.
+      if (circuitSamples) {
+        const t = chassis.translation();
+        const horiz = Math.hypot(velocity.x, velocity.z);
+        if (horiz > 0.5 && distanceToCircuit(circuitSamples, t.x, t.z) > offTrackRadius) {
+          const damp = GRASS_DAMP * dt * spec.chassisMass;
+          chassis.applyImpulse({ x: -damp * velocity.x, y: 0, z: -damp * velocity.z }, true);
+        }
       }
     }
 

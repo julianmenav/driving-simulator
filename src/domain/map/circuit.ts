@@ -51,3 +51,49 @@ export function sampleCircuit(spec: CircuitSpec, samplesPerSegment = 16): Circui
 export function headingOf(tx: number, tz: number): number {
   return Math.atan2(tx, tz);
 }
+
+/** Distance from a point to the closest segment of the (closed) centreline. */
+export function distanceToCircuit(samples: CircuitSample[], x: number, z: number): number {
+  let min = Infinity;
+  const n = samples.length;
+  for (let i = 0; i < n; i++) {
+    const a = samples[i];
+    const b = samples[(i + 1) % n];
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const len2 = dx * dx + dz * dz || 1;
+    let t = ((x - a.x) * dx + (z - a.z) * dz) / len2;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const d = Math.hypot(x - (a.x + t * dx), z - (a.z + t * dz));
+    if (d < min) min = d;
+  }
+  return min;
+}
+
+/** A point on the centreline annotated with how the track curves there. */
+export interface CircuitTurn extends CircuitSample {
+  /** Unit vector toward the inside (concave side) of the curve; ~0 on straights. */
+  insideX: number;
+  insideZ: number;
+  /** Curvature strength: ~0 on a straight, larger on sharper corners. */
+  severity: number;
+}
+
+/**
+ * Annotates each centreline sample with the local curve: the chord midpoint of
+ * the points `lookahead` ahead/behind sits toward the inside of the bend, and its
+ * offset from the sample measures how sharp the corner is. Pure — drives the
+ * kerbs, direction markers and apex deterrents from the same geometry.
+ */
+export function circuitTurns(samples: CircuitSample[], lookahead = 5): CircuitTurn[] {
+  const n = samples.length;
+  return samples.map((s, i) => {
+    const p = samples[(i - lookahead + n) % n];
+    const q = samples[(i + lookahead) % n];
+    const mx = (p.x + q.x) / 2 - s.x;
+    const mz = (p.z + q.z) / 2 - s.z;
+    const severity = Math.hypot(mx, mz);
+    const inside = severity > 1e-3 ? { x: mx / severity, z: mz / severity } : { x: 0, z: 0 };
+    return { ...s, insideX: inside.x, insideZ: inside.z, severity };
+  });
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { headingOf, sampleCircuit } from './circuit';
+import { circuitTurns, distanceToCircuit, headingOf, sampleCircuit } from './circuit';
 import type { CircuitSpec } from './MapManifest';
 
 const SQUARE: CircuitSpec = {
@@ -12,10 +12,10 @@ const SQUARE: CircuitSpec = {
   ],
 };
 
-describe('sampleCircuit', () => {
-  const samplesPerSegment = 16;
-  const samples = sampleCircuit(SQUARE, samplesPerSegment);
+const samplesPerSegment = 16;
+const samples = sampleCircuit(SQUARE, samplesPerSegment);
 
+describe('sampleCircuit', () => {
   it('produces one full loop (samplesPerSegment per control point)', () => {
     expect(samples).toHaveLength(SQUARE.controlPoints.length * samplesPerSegment);
   });
@@ -48,5 +48,31 @@ describe('headingOf', () => {
   it('maps +z tangent to heading 0 and +x tangent to +PI/2', () => {
     expect(headingOf(0, 1)).toBeCloseTo(0, 6);
     expect(headingOf(1, 0)).toBeCloseTo(Math.PI / 2, 6);
+  });
+});
+
+describe('distanceToCircuit', () => {
+  it('is ~0 on the centreline and grows away from it', () => {
+    const onLine = samples[0];
+    expect(distanceToCircuit(samples, onLine.x, onLine.z)).toBeLessThan(1);
+    // The square centre (0,0) is far from every edge.
+    expect(distanceToCircuit(samples, 0, 0)).toBeGreaterThan(40);
+  });
+});
+
+describe('circuitTurns', () => {
+  const turns = circuitTurns(samples);
+
+  it('flags corners (control points) as sharper than the straights between them', () => {
+    const atCorner = turns[0].severity; // sample 0 sits on a control point (a 90° corner)
+    const midSide = turns[samplesPerSegment / 2].severity; // halfway along a straight side
+    expect(atCorner).toBeGreaterThan(midSide);
+  });
+
+  it('points the inside direction toward the centre of the loop', () => {
+    const t = turns[0]; // corner at (50,50); inside should head toward origin
+    expect(t.insideX).toBeLessThan(0);
+    expect(t.insideZ).toBeLessThan(0);
+    expect(Math.hypot(t.insideX, t.insideZ)).toBeCloseTo(1, 6);
   });
 });

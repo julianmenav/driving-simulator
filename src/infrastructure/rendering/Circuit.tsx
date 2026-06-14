@@ -1,11 +1,17 @@
+import { CylinderCollider, RigidBody } from '@react-three/rapier';
 import { useMemo } from 'react';
 import { BufferAttribute, BufferGeometry, DoubleSide } from 'three';
-import { sampleCircuit, type CircuitSample } from '@domain/map/circuit';
+import { circuitTurns, sampleCircuit, type CircuitSample, type CircuitTurn } from '@domain/map/circuit';
 import type { CircuitSpec, TerrainSpec } from '@domain/map/MapManifest';
 import { elevationAt } from '@domain/map/elevation';
 
 const ASPHALT_COLOR = '#33363b';
 const LINE_COLOR = '#d8d8d0';
+
+/** Severity thresholds (see `circuitTurns`): kerbs on corners, chevrons + tyres on the sharp ones. */
+const KERB_SEVERITY = 6;
+const CHEVRON_SEVERITY = 7.5;
+const TYRE_SEVERITY = 9.5;
 
 /**
  * Builds a closed ribbon mesh of the given half-width centred on the sampled
@@ -55,12 +61,14 @@ function buildRibbon(
 
 /**
  * Renders a race circuit from its manifest spec: asphalt ribbon + a thin centre
- * line, both draped on the terrain, and a checkered start/finish band. The
- * centreline maths is the pure domain `sampleCircuit`, so geometry, spawn and
- * (later) checkpoints share one source of truth.
+ * line, both draped on the terrain, a checkered start/finish band, plus corner
+ * furniture (kerbs, direction chevrons and apex tyre stacks) derived from the
+ * centreline curvature. The geometry maths is the pure domain `sampleCircuit`/
+ * `circuitTurns`, so everything stays in sync from one source.
  */
 export function Circuit({ circuit, terrain }: { circuit: CircuitSpec; terrain: TerrainSpec }) {
   const samples = useMemo(() => sampleCircuit(circuit, 16), [circuit]);
+  const turns = useMemo(() => circuitTurns(samples), [samples]);
   const half = circuit.width / 2;
 
   const asphalt = useMemo(() => buildRibbon(samples, terrain, half, 0.04), [samples, terrain, half]);
@@ -74,9 +82,89 @@ export function Circuit({ circuit, terrain }: { circuit: CircuitSpec; terrain: T
       <mesh geometry={centerLine}>
         <meshStandardMaterial color={LINE_COLOR} side={DoubleSide} />
       </mesh>
+      <Kerbs turns={turns} terrain={terrain} halfWidth={half} />
+      <Chevrons turns={turns} terrain={terrain} />
+      <TyreStacks turns={turns} terrain={terrain} halfWidth={half} />
       <StartFinish sample={samples[0]} terrain={terrain} halfWidth={half} />
     </>
   );
+}
+
+/** Red/white rumble strips along both edges of every corner. */
+function Kerbs({ turns, terrain, halfWidth }: { turns: CircuitTurn[]; terrain: TerrainSpec; halfWidth: number }) {
+  const segments = [];
+  for (let i = 0; i < turns.length; i += 2) {
+    const t = turns[i];
+    if (t.severity < KERB_SEVERITY) continue;
+    const yaw = Math.atan2(t.tx, t.tz);
+    const white = (i / 2) % 2 === 0;
+    const color = white ? '#e6e6e6' : '#c0392b';
+    const nx = -t.tz;
+    const nz = t.tx;
+    for (const side of [1, -1]) {
+      const x = t.x + nx * side * halfWidth;
+      const z = t.z + nz * side * halfWidth;
+      segments.push(
+        <mesh key={`${i}-${side}`} position={[x, elevationAt(terrain, x, z) + 0.06, z]} rotation-y={yaw}>
+          <boxGeometry args={[0.7, 0.12, 3]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={white ? 0.25 : 0.1} />
+        </mesh>,
+      );
+    }
+  }
+  return <>{segments}</>;
+}
+
+/** Flat chevron markings on the track at sharp corners, pointing into the turn. */
+function Chevrons({ turns, terrain }: { turns: CircuitTurn[]; terrain: TerrainSpec }) {
+  const marks = [];
+  for (let i = 0; i < turns.length; i += 4) {
+    const t = turns[i];
+    if (t.severity < CHEVRON_SEVERITY) continue;
+    // Point forward and into the bend.
+    const dx = t.tx + t.insideX * 0.7;
+    const dz = t.tz + t.insideZ * 0.7;
+    const yaw = Math.atan2(dx, dz);
+    marks.push(
+      <group key={i} position={[t.x, elevationAt(terrain, t.x, t.z) + 0.08, t.z]} rotation-y={yaw}>
+        <mesh position={[-0.5, 0, -0.3]} rotation-y={0.6}>
+          <boxGeometry args={[0.22, 0.05, 1.6]} />
+          <meshStandardMaterial color="#f2c12e" emissive="#f2c12e" emissiveIntensity={0.7} />
+        </mesh>
+        <mesh position={[0.5, 0, -0.3]} rotation-y={-0.6}>
+          <boxGeometry args={[0.22, 0.05, 1.6]} />
+          <meshStandardMaterial color="#f2c12e" emissive="#f2c12e" emissiveIntensity={0.7} />
+        </mesh>
+      </group>,
+    );
+  }
+  return <>{marks}</>;
+}
+
+/**
+ * Tyre stacks just inside the sharpest corners: dynamic rigid bodies that punish
+ * cutting the apex (you hit them on the grass) but can be knocked aside — no
+ * walls, the place stays open.
+ */
+function TyreStacks({ turns, terrain, halfWidth }: { turns: CircuitTurn[]; terrain: TerrainSpec; halfWidth: number }) {
+  const stacks = [];
+  for (let i = 0; i < turns.length; i += 3) {
+    const t = turns[i];
+    if (t.severity < TYRE_SEVERITY) continue;
+    const x = t.x + t.insideX * (halfWidth + 1.6);
+    const z = t.z + t.insideZ * (halfWidth + 1.6);
+    const baseY = elevationAt(terrain, x, z);
+    stacks.push(
+      <RigidBody key={i} colliders={false} position={[x, baseY + 0.3, z]} mass={35} linearDamping={0.6} angularDamping={0.6}>
+        <CylinderCollider args={[0.3, 0.6]} />
+        <mesh castShadow>
+          <cylinderGeometry args={[0.6, 0.6, 0.6, 16]} />
+          <meshStandardMaterial color="#17181a" />
+        </mesh>
+      </RigidBody>,
+    );
+  }
+  return <>{stacks}</>;
 }
 
 const CHECK_COLS = 8;

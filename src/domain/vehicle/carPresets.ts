@@ -9,7 +9,7 @@ export interface CarPreset {
   id: string;
   /** End-user-facing name (Spanish, like the rest of the in-game text). */
   name: string;
-  description: string;
+  description?: string;
   spec: VehicleSpec;
 }
 
@@ -17,7 +17,6 @@ export const CAR_PRESETS: readonly CarPreset[] = [
   {
     id: 'hatchback',
     name: 'Utilitario',
-    description: 'Ágil y equilibrado. El único modelo por ahora.',
     spec: DEFAULT_VEHICLE_SPEC,
   },
 ];

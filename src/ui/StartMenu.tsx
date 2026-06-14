@@ -103,7 +103,7 @@ export function StartMenu({ mapRepository }: { mapRepository: MapRepository }) {
                 onClick={() => setCarId(c.id)}
               >
                 <span className="menu-option-name">{c.name}</span>
-                <span className="menu-option-desc">{c.description}</span>
+                {c.description && <span className="menu-option-desc">{c.description}</span>}
               </button>
             ))}
           </div>
