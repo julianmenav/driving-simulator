@@ -27,8 +27,14 @@ const RAW_POINTS: CircuitSpec['controlPoints'] = [
   { x: -55, z: -30 }, // hairpin entry
   { x: -85, z: -52 }, // hairpin apex (strong)
   { x: -45, z: -72 }, // hairpin exit
-  { x: 10, z: -85 }, // bottom straight
-  { x: 50, z: -85 }, // kink back toward start
+  // Southern hill loop: dip down, climb the big hill, curve across its top, descend back.
+  { x: -15, z: -98 }, // leave the bottom, head down toward the hill
+  { x: 5, z: -140 }, // hill base
+  { x: 0, z: -185 }, // climbing (a kink on the way up)
+  { x: 40, z: -208 }, // summit — first top curve
+  { x: 85, z: -196 }, // summit — second top curve
+  { x: 98, z: -150 }, // over the crest, descending
+  { x: 82, z: -106 }, // back down toward the start/finish
 ];
 const CONTROL_POINTS: CircuitSpec['controlPoints'] = RAW_POINTS.map((p) => ({ x: p.x * SCALE, z: p.z * SCALE }));
 
@@ -43,28 +49,22 @@ function hash(i: number, j: number): number {
 }
 
 /**
- * A coarse grid of gentle hills: a low-frequency field rounded to integer levels,
- * then relaxed so neighbours never differ by more than one level (the terrain
- * invariant — no cliffs, climbs spread over a level-1 band).
+ * Repeatedly lowers any cell that sits more than one level above a neighbour
+ * until the whole grid satisfies the terrain invariant (neighbours differ by
+ * <=1 level: no cliffs, climbs spread over a level-1 band). Mutates in place.
  */
-function buildHills(size: number, maxLevel: number): number[][] {
-  const levels = Array.from({ length: size }, (_, iz) =>
-    Array.from({ length: size }, (_, ix) => {
-      const u = ix / (size - 1);
-      const v = iz / (size - 1);
-      const f = Math.sin(u * Math.PI * 1.5) * Math.cos(v * Math.PI * 1.3) + 0.5 * Math.sin((u + v) * Math.PI * 2);
-      return Math.max(0, Math.min(maxLevel, Math.round(((f + 1.5) / 3) * maxLevel)));
-    }),
-  );
-  for (let pass = 0; pass < size * 2; pass++) {
+function relaxLevels(levels: number[][]): void {
+  const rows = levels.length;
+  const cols = levels[0].length;
+  for (let pass = 0; pass < rows + cols; pass++) {
     let changed = false;
-    for (let iz = 0; iz < size; iz++) {
-      for (let ix = 0; ix < size; ix++) {
+    for (let iz = 0; iz < rows; iz++) {
+      for (let ix = 0; ix < cols; ix++) {
         const neigh = [
           ix > 0 ? levels[iz][ix - 1] : 0,
-          ix < size - 1 ? levels[iz][ix + 1] : 0,
+          ix < cols - 1 ? levels[iz][ix + 1] : 0,
           iz > 0 ? levels[iz - 1][ix] : 0,
-          iz < size - 1 ? levels[iz + 1][ix] : 0,
+          iz < rows - 1 ? levels[iz + 1][ix] : 0,
         ];
         const maxN = Math.max(...neigh);
         if (levels[iz][ix] > maxN + 1) {
@@ -75,7 +75,36 @@ function buildHills(size: number, maxLevel: number): number[][] {
     }
     if (!changed) break;
   }
-  return levels;
+}
+
+/** Centre + size of the big hill in the southern loop (world/scaled coords). */
+const HILL = { x: 90, z: -300, peak: 5, sigma: 140 };
+
+/**
+ * Terrain for the circuit: a gently rolling base (0..1 levels) over the whole
+ * map plus one prominent **big hill** (a Gaussian bump peaking ~4 levels) under
+ * the southern loop, so the track climbs it, curves across the top and comes
+ * back down. Levels are relaxed afterwards so no neighbours differ by more than
+ * one (drivable slopes, no cliffs).
+ */
+function buildCircuitTerrain(): TerrainSpec {
+  const cellSize = 60;
+  const cols = 13; // x: -360 .. +360
+  const rows = 14; // z: -420 .. +360
+  const originX = -360;
+  const originZ = -420;
+  const levels = Array.from({ length: rows }, (_, iz) =>
+    Array.from({ length: cols }, (_, ix) => {
+      const x = originX + ix * cellSize;
+      const z = originZ + iz * cellSize;
+      const base = 0.5 + 0.5 * Math.sin(x * 0.012) * Math.cos(z * 0.01);
+      const d2 = (x - HILL.x) ** 2 + (z - HILL.z) ** 2;
+      const bump = HILL.peak * Math.exp(-d2 / (2 * HILL.sigma * HILL.sigma));
+      return Math.max(0, Math.min(6, Math.round(base + bump)));
+    }),
+  );
+  relaxLevels(levels);
+  return { levelHeight: 1.6, cellSize, originX, originZ, levels };
 }
 
 /** Minimum distance from a point to the sampled centreline. */
@@ -89,24 +118,18 @@ function distToTrack(samples: { x: number; z: number }[], x: number, z: number):
 }
 
 /**
- * Builds the night street circuit manifest. Flat terrain (the whole ground is
- * drivable, the ribbon is the visual track), buildings filling the city around
- * and inside the loop without sitting on the track, streetlights lining it, and
- * no grid roads — so no NPC traffic (it is a race track). `lockedNight` keeps it
- * at night and hides the day/night toggle.
+ * Builds the night street circuit manifest. The ground (heightfield terrain) is
+ * the drivable surface and the ribbon is the visual track; it rolls gently in
+ * the main area and rises into a big hill under the southern loop. Buildings
+ * fill the city around the loop without sitting on the track, streetlights line
+ * it, and there are no grid roads — so no NPC traffic (it is a race track).
+ * `lockedNight` keeps it at night and hides the day/night toggle.
  */
 export function buildCircuit(): MapManifest {
   const circuit: CircuitSpec = { controlPoints: CONTROL_POINTS, width: TRACK_WIDTH };
   const samples = sampleCircuit(circuit, 16);
 
-  // Gentle rolling hills under the whole track (the ribbon drapes onto them).
-  const terrain: TerrainSpec = {
-    levelHeight: 1.3,
-    cellSize: 60,
-    originX: -300,
-    originZ: -300,
-    levels: buildHills(11, 2),
-  };
+  const terrain = buildCircuitTerrain();
 
   const start = samples[0];
   const spawn = {
