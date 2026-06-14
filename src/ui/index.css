@@ -43,10 +43,15 @@ body {
   padding: 0 0.3em;
 }
 
-.env-toggle {
+.game-buttons {
   position: absolute;
   top: 1rem;
   right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.env-toggle {
   padding: 0.5rem 0.85rem;
   font-size: 0.85rem;
   font-weight: 600;
@@ -75,4 +80,164 @@ body {
   border-radius: 0.5rem;
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* --- Start menu --- */
+.menu-root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+  background: radial-gradient(circle at 50% 30%, #1d2530, #0c0e12 70%);
+}
+
+.menu-card {
+  width: 100%;
+  max-width: 30rem;
+  padding: 1.6rem 1.8rem 2rem;
+  background: rgba(18, 22, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.9rem;
+  box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.5);
+}
+
+.menu-title {
+  margin: 0;
+  font-size: 1.45rem;
+}
+
+.menu-subtitle {
+  margin: 0.2rem 0 1.2rem;
+  color: #9aa6b2;
+  font-size: 0.9rem;
+}
+
+.menu-section {
+  margin-bottom: 1.2rem;
+}
+
+.menu-section h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8a97a4;
+}
+
+.menu-options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.menu-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  color: #e8e8e8;
+  background: rgba(40, 48, 58, 0.5);
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.menu-option:hover {
+  background: rgba(54, 64, 76, 0.7);
+}
+
+.menu-option.is-selected {
+  border-color: #4f9bff;
+  background: rgba(38, 64, 100, 0.7);
+}
+
+.menu-option-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.menu-option-desc {
+  font-size: 0.78rem;
+  color: #9aa6b2;
+}
+
+.menu-badge {
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #ffd479;
+  background: rgba(255, 180, 60, 0.16);
+  border-radius: 0.3rem;
+  vertical-align: middle;
+}
+
+.menu-laps {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.menu-step {
+  width: 2.2rem;
+  height: 2.2rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #e8e8e8;
+  background: rgba(40, 48, 58, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.menu-step:hover {
+  background: rgba(54, 64, 76, 0.9);
+}
+
+.menu-laps-value {
+  min-width: 2rem;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.menu-play {
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #07111f;
+  background: #4f9bff;
+  border: none;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.menu-play:hover:not(:disabled) {
+  background: #6cabff;
+}
+
+.menu-play:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* --- Loading --- */
+.loading-root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0c0e12;
+  color: #9aa6b2;
+  font-size: 1rem;
 }

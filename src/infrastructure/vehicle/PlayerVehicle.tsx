@@ -12,7 +12,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Object3D, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 import type { Game } from '@application/createGame';
 import { elevationAt } from '@domain/map/elevation';
-import { DEFAULT_VEHICLE_SPEC as spec } from '@domain/vehicle/VehicleSpec';
 import { Cabin } from '@infrastructure/vehicle/Cabin';
 import { useLightsOn } from '@infrastructure/rendering/environment/environmentStore';
 import { RearViewMirror } from '@infrastructure/rendering/RearViewMirror';
@@ -31,6 +30,8 @@ const WHEEL_WIDTH = 0.26;
  * state on the event bus.
  */
 export function PlayerVehicle({ game }: { game: Game }) {
+  // The player's chosen car spec (car-selection seam); stable per game instance.
+  const spec = game.vehicleSpec;
   const { world } = useRapier();
   const chassisRef = useRef<RapierRigidBody>(null);
   const controllerRef = useRef<DynamicRayCastVehicleController | null>(null);
