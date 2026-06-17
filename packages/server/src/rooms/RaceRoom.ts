@@ -33,6 +33,8 @@ export class RaceRoom extends Room<RaceState> {
     // Lets clients find this room by its code (matchMaker filterBy(['code'])).
     this.setMetadata({ code: options.code });
 
+    console.log(`[${options.code}] room created (${this.roomId}) · map ${options.mapId} · ${options.laps} laps`);
+
     // High-frequency car pose: stamp the sender and fan out to everyone else.
     this.onMessage('transform', (client, message: CarTransform) => {
       this.broadcast('transform', { id: client.sessionId, ...message }, { except: client });
@@ -42,6 +44,7 @@ export class RaceRoom extends Room<RaceState> {
     this.onMessage('start', (client) => {
       if (client.sessionId === this.hostId && this.state.players.size >= 2 && this.state.phase === 'lobby') {
         this.state.phase = 'racing';
+        console.log(`[${this.state.code}] race started · ${this.state.players.size} players`);
       }
     });
   }
@@ -58,6 +61,9 @@ export class RaceRoom extends Room<RaceState> {
       player.isHost = true;
     }
     this.state.players.set(client.sessionId, player);
+    console.log(
+      `[${this.state.code}] + ${player.name} (${client.sessionId})${player.isHost ? ' [host]' : ''} · ${this.state.players.size} player(s)`,
+    );
   }
 
   onLeave(client: Client) {
@@ -70,5 +76,10 @@ export class RaceRoom extends Room<RaceState> {
         next.isHost = true;
       }
     }
+    console.log(`[${this.state.code}] − ${client.sessionId} · ${this.state.players.size} left`);
+  }
+
+  onDispose() {
+    console.log(`[${this.state.code}] room disposed`);
   }
 }
