@@ -36,6 +36,8 @@ export function MultiplayerMenu({ mapRepository }: { mapRepository: MapRepositor
 
   const busy = status === 'connecting';
   const trimmedName = name.trim() || 'Piloto';
+  // Laps apply only to race tracks (circuits).
+  const showLaps = maps.find((m) => m.id === mapId)?.isCircuit ?? false;
 
   return (
     <div className="menu-root">
@@ -86,16 +88,20 @@ export function MultiplayerMenu({ mapRepository }: { mapRepository: MapRepositor
               </button>
             ))}
           </div>
-          <h3 className="menu-subheading">Vueltas</h3>
-          <div className="menu-laps">
-            <button type="button" className="menu-step" onClick={() => setLaps((n) => Math.max(MIN_LAPS, n - 1))}>
-              −
-            </button>
-            <span className="menu-laps-value">{laps}</span>
-            <button type="button" className="menu-step" onClick={() => setLaps((n) => Math.min(MAX_LAPS, n + 1))}>
-              +
-            </button>
-          </div>
+          {showLaps && (
+            <>
+              <h3 className="menu-subheading">Vueltas</h3>
+              <div className="menu-laps">
+                <button type="button" className="menu-step" onClick={() => setLaps((n) => Math.max(MIN_LAPS, n - 1))}>
+                  −
+                </button>
+                <span className="menu-laps-value">{laps}</span>
+                <button type="button" className="menu-step" onClick={() => setLaps((n) => Math.min(MAX_LAPS, n + 1))}>
+                  +
+                </button>
+              </div>
+            </>
+          )}
           <button
             type="button"
             className="menu-play"

@@ -28,6 +28,11 @@ export interface LobbyPlayer {
   name: string;
   isHost: boolean;
   seat: number;
+  /** Live race fields (0/false until the player reports progress). */
+  lap: number;
+  progress: number;
+  finished: boolean;
+  finishMs: number;
 }
 
 export type MultiplayerStatus = 'idle' | 'menu' | 'connecting' | 'lobby' | 'racing' | 'error';
@@ -43,6 +48,8 @@ interface MultiplayerState {
   status: MultiplayerStatus;
   code: string;
   players: LobbyPlayer[];
+  /** Players ordered by race position (finished first by time, then by progress). */
+  racePositions: LobbyPlayer[];
   localId: string;
   error: string | null;
   /** The room's shared session config (host's map/car/laps) — used to mount the game. */
@@ -52,7 +59,20 @@ interface MultiplayerState {
   createRoom: (config: CreateConfig) => Promise<void>;
   joinRoom: (code: string, name: string) => Promise<void>;
   startRace: () => void;
+  /** In-game: report this client's live race progress / finish to the room. */
+  reportProgress: (lap: number, progress: number) => void;
+  reportFinish: (ms: number) => void;
   leave: () => void;
+}
+
+/** Live race order: finished first (by time), then unfinished by progress. */
+function orderByPosition(players: LobbyPlayer[]): LobbyPlayer[] {
+  return [...players].sort((a, b) => {
+    if (a.finished && b.finished) return a.finishMs - b.finishMs;
+    if (a.finished) return -1;
+    if (b.finished) return 1;
+    return b.progress - a.progress;
+  });
 }
 
 let client: Client | null = null;
@@ -69,10 +89,20 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => {
     room.onStateChange((state: any) => {
       const players: LobbyPlayer[] = [];
       state.players?.forEach((player: any, sessionId: string) =>
-        players.push({ sessionId, name: player.name, isHost: player.isHost, seat: player.seat }),
+        players.push({
+          sessionId,
+          name: player.name,
+          isHost: player.isHost,
+          seat: player.seat,
+          lap: player.lap,
+          progress: player.progress,
+          finished: player.finished,
+          finishMs: player.finishMs,
+        }),
       );
       set((prev) => ({
         players,
+        racePositions: orderByPosition(players),
         code: state.code || prev.code,
         config: { mode: 'free-roam', mapId: state.mapId, carId: state.carId, laps: state.laps },
         // Lobby launches into the race when the host flips the phase.
@@ -89,6 +119,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => {
     status: 'idle',
     code: '',
     players: [],
+    racePositions: [],
     localId: '',
     error: null,
     config: null,
@@ -122,9 +153,12 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => {
 
     startRace: () => get().room?.send('start'),
 
+    reportProgress: (lap, progress) => get().room?.send('progress', { lap, progress }),
+    reportFinish: (ms) => get().room?.send('finish', { ms }),
+
     leave: () => {
       get().room?.leave();
-      set({ status: 'idle', room: null, players: [], code: '', config: null, localId: '', error: null });
+      set({ status: 'idle', room: null, players: [], racePositions: [], code: '', config: null, localId: '', error: null });
     },
   };
 });

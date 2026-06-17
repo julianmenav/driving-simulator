@@ -35,6 +35,16 @@ export interface GameEvents {
   'net/playerLeft': { id: string };
   /** A remote player's latest pose, fed in from the NetworkPort. */
   'net/remoteTransform': CarTransform & { id: string };
+  /** Time-trial countdown tick: 3 · 2 · 1 · 0 (= GO). */
+  'race/countdown': { secondsLeft: number };
+  /** The countdown finished; racing (and the timer) begins. */
+  'race/started': { totalLaps: number };
+  /** A checkpoint gate was crossed in order (index 0 = start/finish). */
+  'race/checkpointPassed': { index: number; total: number; lap: number };
+  /** A lap was completed (crossed the start/finish line). */
+  'race/lapCompleted': { lap: number; totalLaps: number; lapMs: number; totalMs: number };
+  /** All laps done — carries the final total time. */
+  'race/finished': { totalMs: number };
 }
 
 export type GameEventType = keyof GameEvents;

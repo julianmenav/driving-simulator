@@ -9,6 +9,13 @@ export class Player extends Schema {
   @type('boolean') isHost = false;
   /** Starting-grid slot (join order); the client offsets the spawn by it. */
   @type('number') seat = 0;
+  /** Live race progress (reported by the client): current lap and a monotonic
+   *  progress value (laps×gates + gates passed), for live positions. */
+  @type('number') lap = 0;
+  @type('number') progress = 0;
+  /** Set when the client reports finishing; finishMs is its total race time. */
+  @type('boolean') finished = false;
+  @type('number') finishMs = 0;
 }
 
 /**

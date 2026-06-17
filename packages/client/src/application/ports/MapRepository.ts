@@ -9,6 +9,9 @@ export interface MapSummary {
   /** End-user-facing name (Spanish). */
   name: string;
   description: string;
+  /** True for race tracks: the menu offers a lap count and the game runs the
+   *  time-trial core. */
+  isCircuit: boolean;
 }
 
 /**

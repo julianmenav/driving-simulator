@@ -5,6 +5,7 @@ import { resolveSpeedLimit } from '@domain/map/resolveSpeedLimit';
 import { InfractionMonitor } from '@domain/rules/InfractionMonitor';
 import { RedLightRule } from '@domain/rules/RedLightRule';
 import { SpeedLimitRule } from '@domain/rules/SpeedLimitRule';
+import { RaceTracker } from '@domain/race/RaceTracker';
 import { buildRoadGraph, type RoadGraph } from '@domain/traffic/RoadGraph';
 import { TrafficSignals } from '@domain/traffic/TrafficSignals';
 import { AutomaticGearbox } from '@domain/vehicle/Gearbox';
@@ -33,6 +34,8 @@ export interface Game {
   readonly spawnIndex: number;
   /** Navigable lane graph derived from the map, used by the NPC traffic. */
   readonly roadGraph: RoadGraph;
+  /** Time-trial tracker (laps/checkpoints/finish) on circuit maps; null otherwise. */
+  readonly race: RaceTracker | null;
   /** Tears down anything with a lifecycle (the network bridge). Single-player
    *  is a no-op; call it when the game is unmounted. */
   readonly dispose: () => void;
@@ -74,6 +77,10 @@ export function createGame({
   const practiceMode = new PracticeMode(events);
   const roadGraph = buildRoadGraph(map.roads);
 
+  // Time-trial: on a circuit map, track laps/checkpoints/finish (advanced by
+  // PlayerVehicle each physics step). Absent on the city → no race HUD/logic.
+  const race = map.circuit && map.isCircuit && laps >= 1 ? new RaceTracker(events, map.circuit, laps) : null;
+
   // Multiplayer: bridge the bus to the transport (throttled local pose out,
   // remote poses in). Absent in single-player, so the bus carries no net/* events.
   const bridge = network ? new NetworkBridge(events, network) : null;
@@ -92,6 +99,7 @@ export function createGame({
     laps,
     spawnIndex,
     roadGraph,
+    race,
     dispose: () => bridge?.dispose(),
   };
 }

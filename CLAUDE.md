@@ -114,11 +114,12 @@ The MVP = **what exists today + the following**, each a phase with a visible res
    (reuse the `RoadGraph`/manifest data contract), and lap geometry. The current grid city
    stays as the free-roam map. *(Future: a better non-linear city than today's plain web of
    square blocks.)*
-3. **Time-trial core (single-player):** lap + checkpoint tracking in the **domain** (pure,
-   testable, like `TrafficSignals`): you must pass checkpoints in order to count a lap;
-   finishing N laps ends the race. New bus events: `race/checkpointPassed`,
-   `race/lapCompleted`, `race/finished` (carries finish order / time). HUD shows lap N/M and
-   timer.
+3. ✅ **Time-trial core (DONE jun 2026):** lap + checkpoint tracking in the **domain**
+   (`domain/race/`, pure/testable like `TrafficSignals`): pass checkpoints in order to count a
+   lap; finishing N laps ends the race. Bus events `race/countdown|started|checkpointPassed|lapCompleted|finished`;
+   HUD shows the countdown, lap N/M and timer. Works single-player **and** multiplayer (live
+   positions + standings). See the status entry. *(Driven by `map.isCircuit`, not a separate
+   menu mode — the `time-trial` GameModeId stays unused/hidden.)*
 4. **Car selection:** one car for now, but build the selection seam — a registry of
    `VehicleSpec` presets chosen in the menu and passed to the player vehicle. Adding a car
    later = adding a spec (+ optional model), zero plumbing.
@@ -247,6 +248,14 @@ Revisit only if we need UDP-grade netcode.
   - **Starting grid (bug found in verification):** both players spawned at the single `map.spawn`, so each client's local dynamic car overlapped the other's kinematic ghost and got ejected (speedo read 300–400 at rest). Fixed: `createGame({ spawnIndex })` → `PlayerVehicle` offsets the spawn laterally by the player's `seat` (3.2 m), so cars line up on the grid. Verified at rest (gear N, 0 km/h).
   - **Verified** with two isolated Playwright browser contexts: create → join by code → both lobbies show 2 → host Empezar → both mount the race → each spawns the other's car, zero console errors. (Player↔player collision itself uses the same kinematic `RemoteVehicle` already proven against the loopback.)
   - **Deferred:** time-trial core + server-authoritative race orchestration (countdown/lap/`race/finished`); reconnection/anti-cheat; bundling the server (tsup/tsc) instead of `tsx`; a real starting-grid layout (rows, facing the line).
+
+- ✅ Time-trial core + `isCircuit` + auto-recovery (jun 2026, roadmap step 3): the circuit is now an actual race (single-player **and** multiplayer), and laps only exist where they make sense.
+  - **`isCircuit` flag** on `MapManifest` (+`buildCircuit` sets it) and on `MapSummary` (catalog), so menus show the **Vueltas** stepper *only* for circuit maps — fixing the bug where the city offered laps. Both `StartMenu` and `MultiplayerMenu` gate on `summary.isCircuit`.
+  - **Domain race core** (`packages/shared/src/domain/race/`, pure + tested, mirrors `TrafficSignals`/`RedLightRule`): `buildCheckpoints(circuit)` derives ordered gates (position+tangent+halfWidth) from `sampleCircuit` (gate 0 = start/finish); `RaceTracker` is a `countdown → racing → finished` machine advanced by `update(dt, pos)` — runs a 3·2·1 countdown (`controlsLocked` until GO), times laps by detecting **in-order** gate crossings (prev→cur dot flips sign within the gate width, like the red-light rule, so cutting doesn't count), finishes after N laps. Publishes `race/countdown|started|checkpointPassed|lapCompleted|finished`. Exposes `progress` (laps×gates + gates passed) for live ordering. 6 new tests (107 total).
+  - **Wiring**: `createGame` builds `game.race` when `map.isCircuit && laps>=1`. `PlayerVehicle` calls `race.update(dt,pos)` each step, **forces throttle 0 / brake 1 while `controlsLocked`** (held on the grid during countdown), and **auto-rights** an overturned car: if the chassis up-axis points down (`uy<0.35`) and it's nearly stopped for ~3 s, it `setRotation`/`setTranslation`s upright facing the nearest centreline tangent (current yaw off-circuit), velocity zeroed — the chosen *automatic-only* recovery, clock keeps running.
+  - **HUD** (`ui/RaceHud.tsx`, 2D overlay, mounted only when `game.race`): big 3·2·1·¡YA! countdown, lap N/M, live timer (written imperatively to a ref on each `vehicle/stateUpdated` tick — no re-render), a live **P n/total** badge in multiplayer, and a finish panel with standings.
+  - **Multiplayer live positions + standings** (room state, `NetworkPort` untouched): `Player` schema gained `lap/progress/finished/finishMs`; client reports via `room.send('progress'|'finish')` (`multiplayerStore.reportProgress/reportFinish`, driven by a `GameView` effect subscribing to the race events). `multiplayerStore` derives `racePositions` (finished first by time, then by progress). Each client runs its own `RaceTracker` (trusted-client MVP).
+  - **Verified** headless: menu hides laps for *Ciudad* / shows for *Circuito*; single-player countdown locks the car (timer 0:00.0) then GO → timer advances; two browser contexts → both race, and after one drives ahead the HUD shows **P1/2** vs **P2/2** (live positions propagate). Finish standings use the same proven path as positions. **Deferred:** best-time/ghost persistence, sector times, server-authoritative anti-cheat, cross-client countdown clock sync.
 
 ## Scalable road model (design note — not built yet, per Julián's feedback jun 2026)
 

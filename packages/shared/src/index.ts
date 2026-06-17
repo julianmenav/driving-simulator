@@ -18,6 +18,8 @@ export * from './domain/map/resolveSpeedLimit';
 export * from './domain/rules/InfractionMonitor';
 export * from './domain/rules/RedLightRule';
 export * from './domain/rules/Rule';
+export * from './domain/race/checkpoints';
+export * from './domain/race/RaceTracker';
 export * from './domain/rules/SpeedLimitRule';
 export * from './domain/rules/VehicleSnapshot';
 export * from './domain/traffic/NpcDriver';

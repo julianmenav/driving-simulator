@@ -47,6 +47,24 @@ export class RaceRoom extends Room<RaceState> {
         console.log(`[${this.state.code}] race started · ${this.state.players.size} players`);
       }
     });
+
+    // Live race progress (lap + monotonic progress) for live positions.
+    this.onMessage('progress', (client, message: { lap: number; progress: number }) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      player.lap = message.lap;
+      player.progress = message.progress;
+    });
+
+    // Finish report (trusted-client MVP): record the time once, in arrival order.
+    this.onMessage('finish', (client, message: { ms: number }) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player || player.finished) return;
+      player.finished = true;
+      player.finishMs = message.ms;
+      const done = [...this.state.players.values()].filter((p) => p.finished).length;
+      console.log(`[${this.state.code}] 🏁 ${player.name} finished (#${done}) in ${(message.ms / 1000).toFixed(1)}s`);
+    });
   }
 
   onJoin(client: Client, options: CreateOptions) {

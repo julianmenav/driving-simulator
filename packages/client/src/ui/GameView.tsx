@@ -9,6 +9,7 @@ import { SimulatorCanvas } from '@infrastructure/rendering/SimulatorCanvas';
 import { useEnvironmentStore } from '@infrastructure/rendering/environment/environmentStore';
 import { InfractionWarning } from './InfractionWarning';
 import { useMultiplayerStore } from './multiplayerStore';
+import { RaceHud } from './RaceHud';
 import { useSessionStore } from './sessionStore';
 
 /**
@@ -31,6 +32,8 @@ export function GameView({
 }) {
   const quit = useSessionStore((s) => s.quit);
   const leaveRoom = useMultiplayerStore((s) => s.leave);
+  const reportProgress = useMultiplayerStore((s) => s.reportProgress);
+  const reportFinish = useMultiplayerStore((s) => s.reportFinish);
   const phase = useEnvironmentStore((s) => s.phase);
   const toggle = useEnvironmentStore((s) => s.toggle);
 
@@ -47,6 +50,19 @@ export function GameView({
   useEffect(() => {
     if (lockedNight) useEnvironmentStore.getState().setPhase('night');
   }, [lockedNight]);
+
+  // Multiplayer: report this client's race progress/finish to the room (so the
+  // server can build live positions + standings). No-op in single-player (no room).
+  useEffect(() => {
+    const race = game?.race;
+    if (!race) return;
+    const subs = [
+      game.events.subscribe('race/checkpointPassed', () => reportProgress(race.lap, race.progress)),
+      game.events.subscribe('race/lapCompleted', () => reportProgress(race.lap, race.progress)),
+      game.events.subscribe('race/finished', ({ totalMs }) => reportFinish(totalMs)),
+    ];
+    return () => subs.forEach((off) => off());
+  }, [game, reportProgress, reportFinish]);
 
   useEffect(() => {
     let alive = true;
@@ -84,6 +100,7 @@ export function GameView({
     <>
       <SimulatorCanvas game={game} />
       <InfractionWarning game={game} />
+      {game.race && <RaceHud game={game} />}
       <div className="overlay">
         <p>
           <kbd>W</kbd>/<kbd>↑</kbd> acelerar · <kbd>S</kbd>/<kbd>↓</kbd> frenar · <kbd>A</kbd>/<kbd>D</kbd> dirección ·{' '}

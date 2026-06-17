@@ -9,11 +9,13 @@ const MAPS: readonly MapSummary[] = [
     id: 'city',
     name: 'Ciudad',
     description: 'Cuadrícula nocturna con tráfico, semáforos y colinas.',
+    isCircuit: false,
   },
   {
     id: 'circuit',
     name: 'Circuito',
     description: 'Trazado nocturno con curvas rápidas, eses y una horquilla.',
+    isCircuit: true,
   },
 ];
 

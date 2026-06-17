@@ -180,6 +180,7 @@ export function buildCircuit(): MapManifest {
     trafficLights: [],
     streetLights,
     circuit,
+    isCircuit: true,
     lockedNight: true,
   };
 }

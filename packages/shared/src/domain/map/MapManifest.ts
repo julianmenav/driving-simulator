@@ -138,6 +138,9 @@ export interface MapManifest {
   streetLights: StreetLightSpec[];
   /** Optional closed race circuit (instead of/alongside the grid roads). */
   circuit?: CircuitSpec;
+  /** True for race tracks: enables the time-trial core (laps/checkpoints) and
+   *  the lap UI. Requires `circuit`. */
+  isCircuit?: boolean;
   /** When true the map is always night and the day/night toggle is hidden. */
   lockedNight?: boolean;
   /** Future hook: URL of a glTF model to load as the map geometry. */

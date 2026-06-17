@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { MapRepository, MapSummary } from '@application/ports/MapRepository';
-import {
-  DEFAULT_LAPS,
-  findGameMode,
-  GAME_MODES,
-  type GameModeId,
-  type SessionConfig,
-} from '@application/session';
+import { DEFAULT_LAPS, GAME_MODES, type GameModeId, type SessionConfig } from '@application/session';
 import { CAR_PRESETS, DEFAULT_CAR_ID } from '@domain/vehicle/carPresets';
 import { useMultiplayerStore } from './multiplayerStore';
 import { useSessionStore } from './sessionStore';
@@ -42,8 +36,9 @@ export function StartMenu({ mapRepository }: { mapRepository: MapRepository }) {
     };
   }, [mapRepository]);
 
-  const modeInfo = findGameMode(mode);
   const ready = mapId !== '';
+  // Laps apply only to race tracks (circuits); other maps hide the stepper.
+  const showLaps = maps.find((m) => m.id === mapId)?.isCircuit ?? false;
 
   function play() {
     if (!ready) return;
@@ -111,7 +106,7 @@ export function StartMenu({ mapRepository }: { mapRepository: MapRepository }) {
           </div>
         </section>
 
-        {modeInfo.usesLaps && (
+        {showLaps && (
           <section className="menu-section">
             <h2>Vueltas</h2>
             <div className="menu-laps">

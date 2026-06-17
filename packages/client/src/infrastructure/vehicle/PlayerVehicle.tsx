@@ -12,10 +12,24 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Object3D, type Group, type PerspectiveCamera as ThreePerspectiveCamera } from 'three';
 import type { Game } from '@application/createGame';
 import { elevationAt } from '@domain/map/elevation';
-import { distanceToCircuit, sampleCircuit } from '@domain/map/circuit';
+import { distanceToCircuit, headingOf, sampleCircuit, type CircuitSample } from '@domain/map/circuit';
 import { Cabin } from '@infrastructure/vehicle/Cabin';
 import { useLightsOn } from '@infrastructure/rendering/environment/environmentStore';
 import { RearViewMirror } from '@infrastructure/rendering/RearViewMirror';
+
+/** Heading (rad) of the centreline tangent at the sample nearest a point. */
+function nearestTangentHeading(samples: CircuitSample[], x: number, z: number): number {
+  let best = 0;
+  let min = Infinity;
+  for (const s of samples) {
+    const d = (s.x - x) ** 2 + (s.z - z) ** 2;
+    if (d < min) {
+      min = d;
+      best = headingOf(s.tx, s.tz);
+    }
+  }
+  return best;
+}
 
 const WHEEL_DIRECTION = { x: 0, y: -1, z: 0 };
 // With the wheel axle along -x, positive engine force pushes towards +z (front).
@@ -50,6 +64,8 @@ export function PlayerVehicle({ game }: { game: Game }) {
   const wheelRefs = useRef<(Group | null)[]>([]);
   const steeringRef = useRef(0);
   const cameraRef = useRef<ThreePerspectiveCamera>(null);
+  // Time the car has spent overturned-and-stopped, for auto-recovery.
+  const stuckMs = useRef(0);
 
   // The first-person camera also renders the cabin interior (layer 1). The
   // exterior bodywork stays on layer 0, so it shows up in the mirrors too
@@ -82,10 +98,16 @@ export function PlayerVehicle({ game }: { game: Game }) {
     const controller = controllerRef.current;
     if (!controller) return;
 
-    const { throttle, brake, steering } = game.controls.read();
+    const input = game.controls.read();
     const dt = world.timestep;
     const speed = controller.currentVehicleSpeed(); // m/s, positive forward
     const speedKmh = speed * 3.6;
+
+    // During the race countdown the car is held on the grid (throttle off, brake on).
+    const locked = game.race?.controlsLocked ?? false;
+    const throttle = locked ? 0 : input.throttle;
+    const brake = locked ? 1 : input.brake;
+    const steering = input.steering;
 
     // Smoothed steering, less sensitive at high speed.
     const speedFactor = 1 / (1 + Math.abs(speed) * 0.06);
@@ -121,6 +143,29 @@ export function PlayerVehicle({ game }: { game: Game }) {
           chassis.applyImpulse({ x: -damp * velocity.x, y: 0, z: -damp * velocity.z }, true);
         }
       }
+
+      // Auto-recovery: if the car is overturned (its up-axis points down) and
+      // nearly stopped for ~3 s, right it in place so the player never gets
+      // stuck. On a circuit it faces the racing direction; the clock keeps running.
+      const rot = chassis.rotation();
+      const upY = 1 - 2 * (rot.x * rot.x + rot.z * rot.z);
+      if (upY < 0.35 && Math.abs(speed) < 1) {
+        stuckMs.current += dt * 1000;
+        if (stuckMs.current > 3000) {
+          const t = chassis.translation();
+          const heading = circuitSamples
+            ? nearestTangentHeading(circuitSamples, t.x, t.z)
+            : Math.atan2(2 * (rot.x * rot.z + rot.w * rot.y), 1 - 2 * (rot.x * rot.x + rot.y * rot.y));
+          const y = elevationAt(game.map.terrain, t.x, t.z) + 1.2;
+          chassis.setTranslation({ x: t.x, y, z: t.z }, true);
+          chassis.setRotation({ x: 0, y: Math.sin(heading / 2), z: 0, w: Math.cos(heading / 2) }, true);
+          chassis.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          chassis.setAngvel({ x: 0, y: 0, z: 0 }, true);
+          stuckMs.current = 0;
+        }
+      } else {
+        stuckMs.current = 0;
+      }
     }
 
     controller.updateVehicle(dt);
@@ -134,6 +179,9 @@ export function PlayerVehicle({ game }: { game: Game }) {
       speedKmh,
       position: { x: translation?.x ?? 0, z: translation?.z ?? 0 },
     });
+
+    // Time-trial: advance the countdown/timer and detect checkpoint crossings.
+    if (translation) game.race?.update(dt, { x: translation.x, z: translation.z });
 
     // Full pose for the network: position + heading (yaw of the local +z axis)
     // + velocity. Cheap and only consumed when a NetworkBridge is wired.
