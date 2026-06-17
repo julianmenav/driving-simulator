@@ -17,6 +17,9 @@ export default defineConfig({
     },
   },
   server: {
+    // Bind to 0.0.0.0 so other devices on the LAN can load the client (they
+    // then reach the server at the same host, see multiplayerStore).
+    host: true,
     // The shared package sits outside the client root; allow Vite to read it.
     fs: { allow: ['..'] },
   },

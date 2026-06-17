@@ -2,7 +2,20 @@ import { Client, type Room } from 'colyseus.js';
 import { create } from 'zustand';
 import type { SessionConfig } from '@application/session';
 
-const ENDPOINT = import.meta.env.VITE_SERVER_URL ?? 'ws://localhost:2567';
+/**
+ * Where to reach the multiplayer server. `VITE_SERVER_URL` wins when set (prod
+ * uses `wss://<railway>`). Otherwise derive it from where the page was served:
+ * a LAN guest who loaded the client from the host's IP talks to the server at
+ * that same IP, and the host (localhost) talks to localhost — so same-network
+ * play needs **no** configuration. The server's port is fixed at 2567.
+ */
+function defaultEndpoint(): string {
+  if (typeof window === 'undefined') return 'ws://localhost:2567';
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${protocol}://${window.location.hostname}:2567`;
+}
+
+const ENDPOINT = import.meta.env.VITE_SERVER_URL || defaultEndpoint();
 // Unambiguous alphabet (no O/0, I/1) for human-friendly codes.
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const genCode = () =>
