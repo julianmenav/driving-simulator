@@ -35,12 +35,22 @@ Hexagonal applied to the **game rules**, not the game loop. Rendering and physic
 infrastructure with their own paradigm (per-frame loop, mutation, refs).
 
 ```
-src/
-├── domain/          # Vehicle, GearState, Infraction, rules, GameEvent, EventBus — ZERO imports of Three.js/Rapier
-├── application/     # use cases (StartRace, ProcessTick...), game-mode policies, ports (interfaces)
-├── infrastructure/  # physics/ (Rapier), rendering/ (R3F), input/, maps/, persistence/
-└── ui/              # React components: HUD, mirrors, menus
+packages/                         # npm-workspaces monorepo (jun 2026)
+├── shared/   @driving-sim/shared # the pure domain — ZERO Three.js/Rapier; runs on client AND server
+│   └── src/domain/               #   Vehicle, GearState, Infraction, rules, GameEvent, EventBus, RoadGraph…
+│       + src/index.ts            #   barrel (the server imports `@driving-sim/shared`)
+├── client/   @driving-sim/client # Vite/React/R3F → GitHub Pages
+│   └── src/{application,infrastructure,ui,main.tsx}
+│       application/              #   use cases, game-mode policies, ports (Controls/Map/Network)
+│       infrastructure/           #   physics/ (Rapier), rendering/ (R3F), input/, maps/, networking/
+│       ui/                       #   React components: menus, lobby, mirrors
+└── server/   @driving-sim/server # Colyseus authoritative rooms → Railway (runs the pure domain via tsx)
 ```
+
+The client keeps its `@domain`/`@application`/`@infrastructure`/`@ui` path aliases (only
+`@domain` repoints into `packages/shared`), so moving to the monorepo changed **zero**
+client import statements. The shared package's own internal imports are relative (so it is
+self-contained for any consumer).
 
 Per-frame flow: physics → state snapshot → domain evaluates rules → emits events
 (`SpeedLimitExceeded`, `PedestrianHit`...) → the game modes react.
@@ -138,8 +148,14 @@ the transport is swappable — same pattern as `ControlsPort`/`MapRepository`.
 **Authority model — hybrid (recommended for MVP):**
 - **Each player simulates their own car locally** in Rapier (responsive, no input lag) and
   **broadcasts its transform** (position + rotation + velocity) at ~15–20 Hz. Remote cars
-  on other clients are **not** physics bodies — just interpolated transforms (render a tick
-  behind / lerp), so the local Rapier sims never fight each other.
+  on other clients are **`kinematicPosition` bodies** driven by interpolated transforms
+  (render a tick behind / lerp). *(Updated jun 2026, per Julián: collisions between players
+  are wanted.* The earlier note said remote cars should be plain transforms with **no**
+  collision, to keep the local sims from fighting. Kinematic bodies are the middle ground:
+  the contact solver never **moves** a kinematic body, so the local sims still don't fight,
+  but it **does push** the local dynamic player car on contact — so player↔player crashes
+  feel real. Each client resolves "my dynamic car vs your kinematic ghost"; outcomes won't
+  perfectly agree across clients, which is invisible for friends-racing.)
 - **The server owns shared state:** room membership, the race orchestration (countdown,
   lap/checkpoint validation, finish order) and **the NPCs**.
 - **Lap/finish is server-authoritative:** clients report checkpoint crossings; the server
@@ -173,10 +189,10 @@ Start gate at ≥2 players) → (b) broadcast + interpolate remote player cars �
 server-authoritative countdown + lap/finish + `race/finished` to all → (d) *(if/when a map
 has NPCs)* move NPC simulation to the server and broadcast NPC transforms.
 
-**Library choice (open question):** raw `ws` (full control, more plumbing) vs **Colyseus**
-(purpose-built for authoritative rooms + state sync + a join-code/room concept + client
-SDK — maps almost 1:1 onto "rooms with codes, creator presses Start"). Leaning Colyseus for
-the MVP to skip boilerplate; revisit if we need UDP-grade netcode.
+**Library choice (decided jun 2026): Colyseus** (0.16) — purpose-built for authoritative
+rooms + state sync + a join-code/room concept + client SDK, mapping almost 1:1 onto "rooms
+with codes, creator presses Start". Built and shipped (see the monorepo+server status entry).
+Revisit only if we need UDP-grade netcode.
 
 ## Current status
 
@@ -216,6 +232,21 @@ the MVP to skip boilerplate; revisit if we need UDP-grade netcode.
 - ✅ Racing feel — circuit round 2 (jun 2026 feedback): four improvements driven off the same pure centreline (`domain/map/circuit.ts` gained `distanceToCircuit` + `circuitTurns`, tested). **(1) Grass slows the car:** `PlayerVehicle` precomputes the centreline and, when the chassis is more than `width/2 + 0.8` off it, applies a horizontal drag impulse each step (`GRASS_DAMP = 0.8`, caps full-throttle grass ~13 km/h) — only on circuit maps (`game.map.circuit`). **(2) Corner cues:** `Circuit.tsx` derives red/white **kerbs** on every corner and flat yellow **chevrons** pointing into the sharp ones (from `circuitTurns` severity + inside direction — map-agnostic, any circuit gets them). **(3) Apex deterrents:** dynamic, knockable **tyre stacks** (cylinder colliders, mass 35) just inside the sharpest corners, so cutting onto the grass hits them but they're no wall. **(4) Hills + bigger track:** control points scaled ×1.5 (bbox ~±130) and flat terrain replaced by `buildHills` — a low-frequency field rounded to levels then relaxed so neighbours differ ≤1 (no-cliff invariant, tested); the ribbon/furniture drape onto the hills via `elevationAt`. Severity thresholds (kerb 6 / sign 7.5 / tyre 9.5) tuned against the curvature distribution; placement verified top-down (31 kerbs, 8 signs, 9 tyre stacks on the esse+hairpin complex), grass slowdown verified in-app (49→on-grass crawl), 97 tests pass. **Deferred (unchanged):** the time-trial scoring core, NPCs on a circuit.
   - **Feedback follow-up (jun 2026):** (a) the flat yellow chevron markings were replaced by upright **chevron direction-sign boards** on the *outside* of sharp corners (post + dark panel + a row of emissive arrow heads), facing the oncoming driver and pointing round the bend — derived orientation: facing `-tangent` makes the board's local +x the left normal, so `dot(inside, leftNormal)` picks left/right arrows. (b) the kerbs **overlapped on tight inner edges** (fixed 3 m boxes placed where samples bunch up) → each kerb segment now **spans between consecutive edge points** (variable length, end-to-end), skipping segments under 0.6 m or that fold back, so tight insides shrink the strips instead of stacking them. Verified top-down (clean kerbs, signs on corner outsides).
   - **Hill zone (jun 2026):** the loop was extended with a **southern lobe** — the bottom-straight control points were replaced by a 7-point detour that dips south, climbs a hill (with a kink on the way up), curves across its top and descends back to the start/finish (verified non-self-intersecting; bbox now z∈[-313,132]). Flat terrain became `buildCircuitTerrain`: a gently rolling 0–1 base plus a **Gaussian big hill** (peak 5 levels ≈ 8 m at `levelHeight 1.6`, centred under the summit at scaled (90,−300)); a generic `relaxLevels` pass keeps the no-cliff ≤1 invariant so the climb is drivable (~7% grade). The grid grew to 13×14 cells; the ribbon/kerbs/streetlights drape onto the hill via `elevationAt`, and buildings (REACH 200) frame the lower flanks while the summit stays open grass. Verified in a side-profile render: the track climbs, curves over the crest and descends. 97 tests pass.
+
+- ✅ Multiplayer foundation — collidable remote cars, no server yet (jun 2026): the client-side seam for multiplayer, built and verified against a **serverless loopback** so the hardest part (rendering + colliding with other players' cars) is de-risked before any networking. Per Julián's call: **collisions between players are wanted**, so remote cars are **kinematic** (see the updated authority-model note — this supersedes "remote cars are just interpolated transforms, no collisions").
+  - **Seam (`application`):** `NetworkPort` (`application/ports/NetworkPort.ts`) is the transport-agnostic interface — `connect`/`disconnect`, `sendTransform`, and `onPlayerJoined/Left/RemoteTransform` callbacks — mirroring `ControlsPort`/`MapRepository`. `NetworkBridge` keeps the **bus as the single source of truth**: the local pose flows bus → port (throttled 1-of-3 ticks ≈ 20 Hz, counted not clocked → unit-tested), remote events flow port → bus, so the render layer only ever reads bus events. `createGame` takes an optional `network?` and gains a `dispose()` that tears the bridge down (single-player wires nothing); `GameView` calls `dispose()` on unmount.
+  - **Events:** `GameEvents` gained a shared `CarTransform` (position + heading + velocity + speed) and `net/localTransform` (published by `PlayerVehicle` every tick — it now also emits heading/velocity, not just `{x,z}`), plus `net/playerJoined`/`net/playerLeft`/`net/remoteTransform`.
+  - **Remote cars (`infrastructure`):** `RemoteVehicle.tsx` is a `kinematicPosition` Rapier body (`userData.kind: 'remote'`) driven by `setNextKinematicTranslation/Rotation`, lerping toward the latest received pose (a tick behind, refs not state). Kinematic = the contact solver never moves it, so local sims don't fight, **but it pushes the local dynamic player car** → real player↔player collisions. `RemoteVehicles.tsx` spawns/despawns one per remote id off the bus (id list is occasional React state; a pose for an unseen id auto-adds, so join-vs-pose order never matters). Mounted in `SimulatorCanvas` inside `<Physics>` (layer 0 → visible in mirrors). The NPC crash guard now also accepts `'remote'`. A shared `CarBody.tsx` mesh (body + greenhouse + wheels, parametric) was extracted and reused by `NpcCar` and `RemoteVehicle` (the player's own exterior stays bespoke — its wheels are suspension-animated).
+  - **Loopback (`infrastructure/networking/LoopbackNetworkAdapter.ts`):** records local poses and replays them lagged (fixed-size buffer ≈ 2 s, no clock → deterministic) and shifted sideways as a single "ghost" remote. Enabled by the `?ghost` URL flag in `main.tsx` (off by default → single-player and tests untouched). Verified headless: the ghost joins, mounts as a kinematic body (`isKinematic()===true`), and is driven by replayed poses at a real on-circuit position. 101 tests pass (+4 `NetworkBridge`).
+  - **Deferred (next plans, seams in place):** the real **Colyseus** server (rooms with join codes, lobby, Start gate at ≥2 players, broadcast/interpolate between real browsers) implementing the same `NetworkPort`; the single-player **time-trial core** (roadmap step 3: laps/checkpoints/`race/finished`) and server-authoritative race orchestration; moving NPC sim to the server.
+
+- ✅ Monorepo restructure + Colyseus multiplayer server (jun 2026): the foundation became real multiplayer — two browsers race in one world, by code, with collisions.
+  - **Monorepo** (npm workspaces): `src/` split into `packages/{shared,client,server}` (see the architecture tree). `shared` = `@driving-sim/shared`, the pure `domain/` (zero Three/Rapier) consumed by the client via its existing `@domain` alias and by the server via the package barrel. A **pure move** — 101 tests still pass, the client bundle hash was byte-identical, `?ghost` still works. Client → Pages, server → Railway (`railway.json`).
+  - **Server** (`packages/server`, Colyseus 0.16, runs via `tsx` — no build step): `RaceRoom` + `RaceState`/`Player` schema (`@colyseus/schema` 3, **standard decorators**; tsconfig needs `experimentalDecorators` for the typed-legacy API). Rooms found by a client-generated **4-char code** (`define('race').filterBy(['code'])`); first joiner is host; `start` message gated to host + ≥2 players flips `phase` to `racing`; `transform` messages are **relayed** (stamped with sender `sessionId`) — the trusted-client MVP relay. CORS is permissive by default in 0.16 (works for localhost/LAN out of the box). `Player.seat` (join order) drives the starting grid.
+  - **Client**: `ColyseusNetworkAdapter` **implements the existing `NetworkPort`** over a connected `Room` (`getStateCallbacks` for player add/remove, `onMessage('transform')` for poses, filtering own id) → `NetworkBridge`/`RemoteVehicles` unchanged. `multiplayerStore` (zustand) mirrors room state (members, code, host config, lobby→racing phase). UI: `MultiplayerMenu` (name + create-with-map/car/laps / join-by-code) and `Lobby` (code, player list, host's **Empezar** at ≥2); `App` routes menu→multiplayer-menu→lobby→game; the in-game **Menú** leaves the room. Endpoint via `VITE_SERVER_URL`.
+  - **Starting grid (bug found in verification):** both players spawned at the single `map.spawn`, so each client's local dynamic car overlapped the other's kinematic ghost and got ejected (speedo read 300–400 at rest). Fixed: `createGame({ spawnIndex })` → `PlayerVehicle` offsets the spawn laterally by the player's `seat` (3.2 m), so cars line up on the grid. Verified at rest (gear N, 0 km/h).
+  - **Verified** with two isolated Playwright browser contexts: create → join by code → both lobbies show 2 → host Empezar → both mount the race → each spawns the other's car, zero console errors. (Player↔player collision itself uses the same kinematic `RemoteVehicle` already proven against the loopback.)
+  - **Deferred:** time-trial core + server-authoritative race orchestration (countdown/lap/`race/finished`); reconnection/anti-cheat; bundling the server (tsup/tsc) instead of `tsx`; a real starting-grid layout (rows, facing the line).
 
 ## Scalable road model (design note — not built yet, per Julián's feedback jun 2026)
 
@@ -258,13 +289,23 @@ generator are simply minimal today, exactly as with the earlier "single street" 
 
 - Node is managed with **nvm.fish**; in non-interactive shells it is not on PATH. Use:
   `export PATH="$HOME/.local/share/nvm/v24.15.0/bin:$PATH"` before npm/node.
-- `npm run dev` · `npm test` · `npm run build` (typecheck + bundle).
-- Headless visual verification: there is no chromium-cli; use `playwright-core` (installed ad hoc in /tmp) with `executablePath: /usr/bin/google-chrome-stable` and flags `--no-sandbox --enable-unsafe-swiftshader --use-angle=swiftshader`; wait ~7 s for the Rapier WASM to load before capturing.
+- **npm workspaces** (root delegates): `npm run dev` (client, :5173) · `npm run server`
+  (Colyseus, :2567) · `npm test` (all workspaces — 101) · `npm run build` (client typecheck
+  + bundle) · `npm run deploy` (client → Pages). Per-package: `npm run <script> -w @driving-sim/<pkg>`.
+- **Multiplayer endpoint** is a client env var `VITE_SERVER_URL` (`packages/client/.env*`):
+  `ws://localhost:2567` local, `ws://<LAN-IP>:2567` same-network, `wss://<railway>` prod
+  (Pages is HTTPS → must be `wss://`). Two browser tabs on localhost is the fastest test loop;
+  the server need not be deployed for local/LAN play.
+- Headless visual verification: there is no chromium-cli; use `playwright-core` (installed ad hoc in /tmp) with `executablePath: /usr/bin/google-chrome-stable` and flags `--no-sandbox --enable-unsafe-swiftshader --use-angle=swiftshader`; wait ~7 s for the Rapier WASM to load before capturing. For multiplayer, drive two isolated `browser.newContext()` sessions in one script.
 
-## Deploy (GitHub Pages)
+## Deploy
 
-- Same convention as dnd-calculator: `gh-pages` package (no GitHub Actions). `base: '/driving-simulator/'` in vite.config.ts.
-- `npm run deploy` = `npm run build && gh-pages -d dist`: publishes `dist/` to the `gh-pages` branch.
+**Client → GitHub Pages** (`packages/client`):
+- Same convention as dnd-calculator: `gh-pages` package (no GitHub Actions). `base: '/driving-simulator/'` in `packages/client/vite.config.ts`.
+- `npm run deploy` = client `build && gh-pages -d dist` (publishes `packages/client/dist` to the `gh-pages` branch). Set `VITE_SERVER_URL=wss://<railway-domain>` for the prod build.
+
+**Server → Railway** (`packages/server`, separate deploy — Pages can't host a WebSocket server):
+- `railway.json` at the repo root: NIXPACKS build, start `npm start -w @driving-sim/server`. Set the Railway service root to the repo root (so the workspace install symlinks `@driving-sim/shared`); Railway injects `PORT`. The server runs via `tsx` (no build step) and imports the pure shared domain.
 - SSH remote `git@github.com:julianmenav/driving-simulator.git`. Pages serves from the `gh-pages` branch.
 - URL: https://julianmenav.github.io/driving-simulator/
 - TypeScript 6: `baseUrl` is deprecated — the tsconfig `paths` use relative paths.
